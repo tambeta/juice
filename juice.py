@@ -7,27 +7,26 @@ import pyglet
 from juice.heightmap import Heightmap
 
 def draw_point(x, y):
-	pyglet.graphics.draw(1, pyglet.gl.GL_POINTS,
-			("v2i", (x, y)),
-			('c3B', (255, 0, 0))
-		)	
+    pyglet.graphics.draw(1, pyglet.gl.GL_POINTS,
+            ("v2i", (x, y)),
+            ('c3B', (255, 0, 0))
+        )   
 
 def main():
-	GAME_WIDTH = 800
-	GAME_HEIGHT = 600
-	
-	window = pyglet.window.Window(GAME_WIDTH, GAME_HEIGHT)
-	hmap = Heightmap(257)
-	
-	hmap.generate()
-	img = hmap.get_imgdata()
+    GAME_WIDTH = 800
+    GAME_HEIGHT = 600
+    
+    window = pyglet.window.Window(GAME_WIDTH, GAME_HEIGHT)
+    hmap = Heightmap(257)
+    
+    img = hmap.get_imgdata(threshold=0x40)
 
-	@window.event
-	def on_draw():
-		window.clear()
-		img.blit(100, 20)
+    @window.event
+    def on_draw():
+        window.clear()
+        img.blit(100, 20)
 
-	#window.push_handlers(pyglet.window.event.WindowEventLogger())
-	pyglet.app.run()
+    #window.push_handlers(pyglet.window.event.WindowEventLogger())
+    pyglet.app.run()
 
 main()
