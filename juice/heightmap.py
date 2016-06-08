@@ -1,5 +1,6 @@
 
 import array
+import numpy as np
 import pyglet
 
 from random import randint
@@ -19,7 +20,7 @@ class Heightmap:
         self.peturb_range = peturb_range
         self.peturb_decrease = peturb_decrease
         
-        self._terrain = []
+        self._terrain = None
         self._dim = dim
         
         self._assert_dim()
@@ -28,27 +29,19 @@ class Heightmap:
 
         """ Generate a heightmap using the diamond-square algorithm """
         
-        t = self._terrain = []
         square_dim = dim = self._dim
         rand_range = self.peturb_range
+        t = self._terrain = np.zeros((dim, dim), dtype=np.uint8)
         x = 0
         y = 0
-
-        # Init the matrix
-
-        for i in range(self._dim):
-            col = []
-            for j in range(self._dim):
-                col.append(0)
-            t.append(col)
-
+        
         # Init corner values
 
-        t[0][0] = randint(*self.INITIAL_RANGE)
-        t[0][dim-1] = randint(*self.INITIAL_RANGE)
-        t[dim-1][0] = randint(*self.INITIAL_RANGE)
-        t[dim-1][dim-1] = randint(*self.INITIAL_RANGE)
-
+        t[0, 0] = randint(*self.INITIAL_RANGE)
+        t[0, dim-1] = randint(*self.INITIAL_RANGE)
+        t[dim-1, 0] = randint(*self.INITIAL_RANGE)
+        t[dim-1, dim-1] = randint(*self.INITIAL_RANGE)
+        
         # Run the algorithm with iteratively smaller squares
 
         while (square_dim > 2):
@@ -73,7 +66,9 @@ class Heightmap:
         not occurred earlier.
         """
         
-        t = self._terrain or self.generate()
+        t = self._terrain \
+            if (isinstance(self._terrain, np.ndarray)) \
+            else self.generate()
         
         imgdata = []
         thr_color = (0, 0, 200)
@@ -103,16 +98,17 @@ class Heightmap:
         elif (val > 255):
             val = 255
 
-        t[x][y] = val
+        t[x, y] = val
 
     def _set_square_average(self, x, y, square_dim, rand_range):
         t = self._terrain
 
-        p1 = t[x][y]
-        p2 = t[x + square_dim - 1][y]
-        p3 = t[x][y + square_dim - 1]
-        p4 = t[x + square_dim - 1][y + square_dim - 1]
-        avg = int((p1 + p2 + p3 + p4) / 4)
+        p1 = t[x, y]
+        p2 = t[x + square_dim - 1, y]
+        p3 = t[x, y + square_dim - 1]
+        p4 = t[x + square_dim - 1, y + square_dim - 1]
+        
+        avg = np.sum([p1, p2, p3, p4]) // 4
         midpoint = (square_dim - 1) // 2
 
         self._set_point_perturbed_value(x + midpoint, y + midpoint, avg, rand_range)
@@ -132,8 +128,12 @@ class Heightmap:
 
         for p in coords:
             try:
-                px = p[0]; py = p[1]
-                values.append(t[px][py])
+                px = p[0]
+                py = p[1]
+                
+                if (px < 0 or py < 0):
+                    raise IndexError()
+                values.append(t[px, py])
             except IndexError as e:
                 pass
 
@@ -173,8 +173,8 @@ class Heightmap:
             
             for x in range(self._dim):
                 for y in range(self._dim):
-                    v = t[x][y]
-                    t[x][y] = int((v - minv) * scale)
+                    v = t[x, y]
+                    t[x, y] = int((v - minv) * scale)
 
     def _assert_dim(self):
         
@@ -188,15 +188,5 @@ class Heightmap:
         
         raise ValueError("Heightmap dimension must be a power of two + 1")
         
-    def __str__(self):
-        t = self._terrain
-        dim = self._dim
-        matrix = ""
-
-        for i in range(dim):
-            for j in range(dim):
-                matrix += str(t[j][i]).ljust(4)
-            matrix += "\n"
-
-        return matrix
-
+    def __str__(self):        
+        return str(self._terrain)

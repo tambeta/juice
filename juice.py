@@ -19,7 +19,7 @@ def main():
     window = pyglet.window.Window(GAME_WIDTH, GAME_HEIGHT)
     hmap = Heightmap(257)
     
-    img = hmap.get_imgdata(threshold=0x40)
+    img = hmap.get_imgdata()
 
     @window.event
     def on_draw():
