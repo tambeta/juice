@@ -1,16 +1,14 @@
 
 import array
 import numpy as np
-import pyglet
 
-from PIL import Image
 from random import randint
 
 class Heightmap:
 
     """
     A class representing a heightmap and a method to generate one
-    procedurally using the diamond-square algorithm
+    procedurally using the diamond-square algorithm.
     """
     
     INITIAL_RANGE = (0x40, 0xBF)
@@ -21,7 +19,7 @@ class Heightmap:
         self.peturb_range = peturb_range
         self.peturb_decrease = peturb_decrease
         
-        self._terrain = None
+        self.matrix = None
         self._dim = dim
         
         self._assert_dim()
@@ -32,7 +30,7 @@ class Heightmap:
         
         square_dim = dim = self._dim
         rand_range = self.peturb_range
-        t = self._terrain = np.zeros((dim, dim), dtype=np.uint8)
+        t = self.matrix = np.zeros((dim, dim), dtype=np.uint8)
         x = 0
         y = 0
         
@@ -58,31 +56,10 @@ class Heightmap:
             rand_range -= int(rand_range * self.peturb_decrease)
         
         self._stretch_levels()
-        return self._terrain
-
-    def get_imgdata(self, scaling=1):
-        
-        """
-        Get the heightmap as pyglet ImageData. Generates the heightmap if
-        this has not occurred earlier. The optional scaling value uses PIL to
-        scale up the resulting image.
-        """
-        
-        t = self._terrain \
-            if (isinstance(self._terrain, np.ndarray)) \
-            else self.generate()
-        dim = self._dim
-        scaling = int(scaling)
-        
-        if (scaling != 1):
-            t = Image.frombytes("L", (dim, dim), t) \
-                .resize((dim*scaling, dim*scaling))
-            dim *= scaling
-        
-        return pyglet.image.ImageData(dim, dim, "L", t.tobytes())
+        return self.matrix
 
     def _set_point_perturbed_value(self, x, y, val, perturb_range):
-        t = self._terrain
+        t = self.matrix
         half_range = perturb_range // 2
         val = val + randint(-half_range, half_range)
 
@@ -94,7 +71,7 @@ class Heightmap:
         t[x, y] = val
 
     def _set_square_average(self, x, y, square_dim, rand_range):
-        t = self._terrain
+        t = self.matrix
 
         p1 = t[x, y]
         p2 = t[x + square_dim - 1, y]
@@ -110,14 +87,15 @@ class Heightmap:
 
         # This function receives the center point of a diamond
 
-        t = self._terrain
-        values = []
-        coords = [
+        t = self.matrix
+        total = 0
+        nval = 0
+        coords = (
             (x, y - halfsquare),
             (x + halfsquare, y),
             (x, y + halfsquare),
             (x - halfsquare, y)
-        ]
+        )
 
         for p in coords:
             try:
@@ -126,12 +104,12 @@ class Heightmap:
                 
                 if (px < 0 or py < 0):
                     raise IndexError()
-                values.append(t[px, py])
+                total += t[px, py]
+                nval += 1
             except IndexError as e:
                 pass
 
-        avg = int(sum(values) / len(values))
-        self._set_point_perturbed_value(x, y, avg, rand_range)
+        self._set_point_perturbed_value(x, y, total // nval, rand_range)
 
     def _set_diamond_averages(self, x, y, square_dim, rand_range):
 
@@ -146,9 +124,12 @@ class Heightmap:
 
     def _stretch_levels(self):
         
-        """ Stretch the levels so that the lowest value would be 0 and the highest at 255. """
+        """
+        Stretch the levels so that the lowest value would be 0 and the
+        highest at 255. TODO: numpy-ify this.
+        """
         
-        t = self._terrain
+        t = self.matrix
         maxv = 0
         minv = 255
         
@@ -182,4 +163,4 @@ class Heightmap:
         raise ValueError("Heightmap dimension must be a power of two + 1")
         
     def __str__(self):        
-        return str(self._terrain)
+        return str(self.matrix)
