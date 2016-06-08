@@ -6,6 +6,7 @@ from PIL import Image
 
 from juice.heightmap import Heightmap
 from juice.terrainlayer import TerrainLayer
+from juice.terrainlayer import RiverLayer
 
 class Terrain:
 
@@ -28,8 +29,24 @@ class Terrain:
         if (not isinstance(layer, (TerrainLayer,))):
             raise TypeError("layer must be a TerrainLayer")
         
+        # Do not allow several layers of same type
+        
+        try:
+            self.get_layer_by_type(type(layer))
+            raise TypeError(\
+                "Cannot add more than one layer of given type (" + str(type(layer)) + ")")
+        except LookupError as e:
+            pass
+        
         layer.terrain = self
         self._layers.append(layer)
+        
+    def get_layer_by_type(self, ltype):
+        for layer in self._layers:
+            if (isinstance(layer, (ltype,))):
+                return layer
+        
+        raise LookupError("Layer of type " + str(ltype) + " not found") 
     
     def generate(self):
         self.heightmap.generate()
@@ -39,19 +56,29 @@ class Terrain:
         
     def get_imgdata(self, scaling=1):
         
-        """ Get the terrain as pyglet ImageData. The optional scaling value uses
-        PIL to scale up the resulting image. TODO: this can be done in scipy
-        directly (scipy.misc.imresize).
-        """
+        """ Get the terrain as pyglet ImageData. """
         
-        hmatrix = self.heightmap.matrix
+        imatrix = self.heightmap.matrix
         dim = self.dim
         scaling = int(scaling)
         
+        # Turn Heightmap into an RGB image
+        
+        img = Image.frombytes("L", (dim, dim), imatrix).convert(mode="RGB")
+        
+        # Apply layers
+        
+        rlayer = self.get_layer_by_type(RiverLayer)
+        
+        # TODO HERE -> img.putpixel((0, 0), (255, 0, 0))
+        
+        # Scale if requested; output (flipped to match coordinate systems)
+        
         if (scaling != 1):
-            hmatrix = Image.frombytes("L", (dim, dim), hmatrix) \
-                .resize((dim*scaling, dim*scaling))
+            img = img.resize((dim*scaling, dim*scaling))
             dim *= scaling
         
-        return pyglet.image.ImageData(dim, dim, "L", hmatrix.tobytes())
-    
+        return pyglet.image.ImageData(
+            dim, dim, "RGB",
+            img.transpose(Image.FLIP_TOP_BOTTOM).tobytes()
+        )
