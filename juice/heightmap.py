@@ -3,6 +3,7 @@ import array
 import numpy as np
 import pyglet
 
+from PIL import Image
 from random import randint
 
 class Heightmap:
@@ -59,34 +60,26 @@ class Heightmap:
         self._stretch_levels()
         return self._terrain
 
-    def get_imgdata(self, threshold=None):
+    def get_imgdata(self, scaling=1):
         
         """
-        Get the heightmap as ImageData. Generates the heightmap if this has
-        not occurred earlier.
+        Get the heightmap as pyglet ImageData. Generates the heightmap if
+        this has not occurred earlier. The optional scaling value uses PIL to
+        scale up the resulting image.
         """
         
         t = self._terrain \
             if (isinstance(self._terrain, np.ndarray)) \
             else self.generate()
+        dim = self._dim
+        scaling = int(scaling)
         
-        imgdata = []
-        thr_color = (0, 0, 200)
-        w = len(t[0])
-        h = len(t)
-
-        for col in t:
-            for v in col:
-                if (threshold and v < threshold):
-                    imgdata.append(thr_color[0])
-                    imgdata.append(thr_color[1])
-                    imgdata.append(thr_color[2])
-                else:
-                    imgdata.append(v)
-                    imgdata.append(v)
-                    imgdata.append(v)
-
-        return pyglet.image.ImageData(w, h, "RGB", array.array("B", imgdata).tostring())
+        if (scaling != 1):
+            t = Image.frombytes("L", (dim, dim), t) \
+                .resize((dim*scaling, dim*scaling))
+            dim *= scaling
+        
+        return pyglet.image.ImageData(dim, dim, "L", t.tobytes())
 
     def _set_point_perturbed_value(self, x, y, val, perturb_range):
         t = self._terrain
