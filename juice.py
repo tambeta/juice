@@ -17,14 +17,14 @@ def main():
     GAME_HEIGHT = 600
     
     window = pyglet.window.Window(GAME_WIDTH, GAME_HEIGHT)
-    hmap = Heightmap(257)
+    hmap = Heightmap(1025)
     
     img = hmap.get_imgdata()
 
     @window.event
     def on_draw():
         window.clear()
-        img.blit(100, 20)
+        img.blit(10, 10)
 
     #window.push_handlers(pyglet.window.event.WindowEventLogger())
     pyglet.app.run()
