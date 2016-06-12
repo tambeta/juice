@@ -11,13 +11,15 @@ from juice.terrainlayer import RiverLayer
 class Terrain:
 
     """ Terrain is a compositor class consisting of an underlying Heightmap
-    and several TerrainLayers.
+    and several TerrainLayers. Note on threshold constants: the condition is
+    ruled to apply _at_ threshold as well as above or below.
     """
     
     WATER_THRESHOLD = 30
     MOUNTAIN_THRESHOLD = 200
     
     RIVER_DENSITY = 0.15
+    MIN_RIVER_SOURCES = 4
     
     def __init__(self, dim):
         self.heightmap = Heightmap(dim)
@@ -68,9 +70,7 @@ class Terrain:
         
         # Apply layers
         
-        rlayer = self.get_layer_by_type(RiverLayer)
-        
-        # TODO HERE -> img.putpixel((0, 0), (255, 0, 0))
+        self._apply_layers_to_image(img)
         
         # Scale if requested; output (flipped to match coordinate systems)
         
@@ -82,3 +82,21 @@ class Terrain:
             dim, dim, "RGB",
             img.transpose(Image.FLIP_TOP_BOTTOM).tobytes()
         )
+    
+    def _apply_layers_to_image(self, img):
+        
+        """ Apply all TerrainLayers to the passed Image in order """
+        
+        rlayer = self.get_layer_by_type(RiverLayer)        
+        it = np.nditer(rlayer.matrix, flags=["multi_index"])
+        
+        while (not it.finished):
+            v = it[0]
+            
+            if (v > 0):
+                p = it.multi_index
+                color = (255, 0, 0) if (v == 1) else (0, 0, 255 - v*3)
+                img.putpixel((p[1], p[0]), color)
+            
+            it.iternext()
+        

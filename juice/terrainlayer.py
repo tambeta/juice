@@ -17,6 +17,19 @@ class TerrainLayer:
         
     def generate(self):
         pass
+        
+    def _foreach_edge_neighbor(self, cb, x, y, *extra):
+        
+        """ Convenience routine to loop over all edge neigbors. Excludes invalid
+        coordinates. Callback can break by returning False.
+        """
+        
+        dim = self.terrain.dim
+        
+        for (cx, cy) in ((x, y-1), (x+1, y), (x, y+1), (x-1, y)):
+            if (cx >= 0 and cy >= 0 and cx < dim and cy < dim):
+                if (cb(cx, cy, *extra) == False):
+                    return
 
 class RiverLayer(TerrainLayer):
     def __init__(self, *args):
@@ -27,10 +40,10 @@ class RiverLayer(TerrainLayer):
         """ Generate the river system based on terrain's heightmap. """
         
         terrain = self.terrain
-        dim = terrain.dim
         mthr = terrain.MOUNTAIN_THRESHOLD
         hmatrix = terrain.heightmap.matrix
         mtn_coords = np.array([])
+        rvr_source_coords = mtn_coords
         
         self.matrix = matrix = np.zeros(np.shape(hmatrix), dtype=np.uint8)
         
@@ -39,18 +52,75 @@ class RiverLayer(TerrainLayer):
         
         try:
             mtn_coords = np.dstack(np.where(hmatrix >= mthr))[0]
-            #mtn_coords = np.where(hmatrix >= mthr)
         except KeyError as e:
             pass
         
-        # Shuffle mountain coordinates and pick river start points
+        # Shuffle mountain coordinates and pick river sources
         
         if (len(mtn_coords)):
             n_river_tiles = int(len(mtn_coords) * terrain.RIVER_DENSITY)
+            
+            if (n_river_tiles < terrain.MIN_RIVER_SOURCES):
+                n_river_tiles = min(len(mtn_coords), terrain.MIN_RIVER_SOURCES)
+            
             np.random.shuffle(mtn_coords)
-            mtn_coords = mtn_coords[0:n_river_tiles]
+            rvr_source_coords = mtn_coords[0:n_river_tiles]
+        else:
+            rvr_source_coords = mtn_coords
         
-        for p in mtn_coords:
-            x = p[0]
-            y = p[1]
-            matrix[x, y] = 1
+        # For each river source, generate a river
+        
+        for p in rvr_source_coords:
+            self._generate_river(p[1], p[0])
+            
+
+    def _confirm_square_ok(self, x, y, ok_neighbors, neigh_rivers_threshold):
+        
+        """ Helper routine to confirm that a position is OK for a river. A
+        position is suitable if itself or not more than neigh_rivers_threshold
+        of its edge neighbors are a river square.
+        """
+        
+        matrix = self.matrix
+        n_river_nbrs = 0
+        
+        def confirm_nbrs_not_river(x, y):
+            nonlocal n_river_nbrs
+            if (matrix[y, x] != 0):
+                n_river_nbrs += 1
+        
+        self._foreach_edge_neighbor(confirm_nbrs_not_river, x, y)
+        
+        if (matrix[y, x] == 0 and n_river_nbrs <= neigh_rivers_threshold):
+            ok_neighbors.append((x, y))
+            return True
+            
+    def _generate_river(self, x, y, iteration=1):
+        
+        """ Generate a river starting from (x, y). TODO: check if water
+        level has been reached, otherwise delete river; allow converging
+        with other river
+        """
+        
+        hmatrix = self.terrain.heightmap.matrix
+        matrix = self.matrix
+        ok_neighbors = []
+        
+        if (
+            (iteration == 1 and not self._confirm_square_ok(x, y, [], 0)) or
+            hmatrix[y, x] <= self.terrain.WATER_THRESHOLD
+        ):
+            return
+        matrix[y, x] = iteration
+        
+        # Pick all suitable edge-neighbors for current position, sort by height
+        # and use the lowest suitable neighbor point for continuing recursively.
+        
+        self._foreach_edge_neighbor(self._confirm_square_ok, x, y, ok_neighbors, 1)
+        ok_neighbors.sort(key=lambda p: hmatrix[p[1], p[0]])
+        
+        if (len(ok_neighbors)):
+            p = ok_neighbors[0]
+            self._generate_river(p[0], p[1], iteration+1)
+        return
+    
