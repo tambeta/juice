@@ -95,7 +95,21 @@ class Terrain:
             
             if (v > 0):
                 p = it.multi_index
-                color = (255, 0, 0) if (v == 1) else (0, 0, 255 - v*3)
+                color = None
+                
+                if (v % 6 == 0):
+                    color = (255, 255, 0)
+                elif (v % 5 == 0):
+                    color = (255, 0, 0)
+                elif (v % 4 == 0):
+                    color = (0, 255, 0)
+                elif (v % 3 == 0):
+                    color = (0, 0, 255)
+                elif (v % 2 == 0):
+                    color = (0, 255, 255)
+                else:
+                    color = (255, 0, 255)
+                
                 img.putpixel((p[1], p[0]), color)
             
             it.iternext()

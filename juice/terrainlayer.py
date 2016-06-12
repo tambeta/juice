@@ -70,8 +70,8 @@ class RiverLayer(TerrainLayer):
         
         # For each river source, generate a river
         
-        for p in rvr_source_coords:
-            self._generate_river(p[1], p[0])
+        for (i, p) in enumerate(rvr_source_coords, start=1):
+            self._generate_river(p[1], p[0], i)
             
 
     def _confirm_square_ok(self, x, y, ok_neighbors, neigh_rivers_threshold):
@@ -94,8 +94,8 @@ class RiverLayer(TerrainLayer):
         if (matrix[y, x] == 0 and n_river_nbrs <= neigh_rivers_threshold):
             ok_neighbors.append((x, y))
             return True
-            
-    def _generate_river(self, x, y, iteration=1):
+    
+    def _generate_river(self, x, y, river_id, iteration=1):
         
         """ Generate a river starting from (x, y). TODO: check if water
         level has been reached, otherwise delete river; allow converging
@@ -111,7 +111,7 @@ class RiverLayer(TerrainLayer):
             hmatrix[y, x] <= self.terrain.WATER_THRESHOLD
         ):
             return
-        matrix[y, x] = iteration
+        matrix[y, x] = river_id
         
         # Pick all suitable edge-neighbors for current position, sort by height
         # and use the lowest suitable neighbor point for continuing recursively.
@@ -121,6 +121,6 @@ class RiverLayer(TerrainLayer):
         
         if (len(ok_neighbors)):
             p = ok_neighbors[0]
-            self._generate_river(p[0], p[1], iteration+1)
+            self._generate_river(p[0], p[1], river_id, iteration+1)
         return
     
