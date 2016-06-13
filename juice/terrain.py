@@ -116,7 +116,8 @@ class Terrain:
         layer_colorers = {}
         
         layer_colorers[SeaLayer] = (0, 0, 255)
-        layer_colorers[RiverLayer] = (0, 0, 180)
+        #layer_colorers[RiverLayer] = (0, 0, 180)
+        layer_colorers[RiverLayer] = self._get_colormap_entry
 
         for ltype in layer_types:
             rlayer = self.get_layer_by_type(ltype)
