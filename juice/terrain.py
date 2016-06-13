@@ -1,8 +1,11 @@
 
+import colorsys
 import numpy as np
 import pyglet
+import random
 
 from PIL import Image
+from warnings import warn
 
 from juice.heightmap import Heightmap
 from juice.terrainlayer import TerrainLayer
@@ -21,11 +24,14 @@ class Terrain:
     RIVER_DENSITY = 0.15
     MIN_RIVER_SOURCES = 4
     
-    def __init__(self, dim):
-        self.heightmap = Heightmap(dim)
+    def __init__(self, dim, randseed=None):
+        self.heightmap = Heightmap(dim, randseed=randseed)
         self.dim = dim
         
-        self._layers = []        
+        self._layers = []
+        self._colormap = {}
+        
+        random.seed(randseed)
     
     def add_layer(self, layer):
         if (not isinstance(layer, (TerrainLayer,))):
@@ -83,33 +89,40 @@ class Terrain:
             img.transpose(Image.FLIP_TOP_BOTTOM).tobytes()
         )
     
+    def _get_colormap_entry(self, key):
+        
+        """ Convenience routine to return a random "good-looking" color (an RGB
+        tuple with values [0 .. 255]) according to a given key, storing it if
+        not already present.
+        """
+        
+        colormap = self._colormap
+        
+        if (key in colormap):
+            color = colormap[key]
+        else:                
+            h = random.random()
+            s = random.uniform(0.5, 1)
+            l = random.uniform(0.35, 0.65)
+            color = tuple(map(lambda x: int(x*255), colorsys.hls_to_rgb(h, l, s)))
+            colormap[key] = color        
+        
+        return color
+    
     def _apply_layers_to_image(self, img):
         
         """ Apply all TerrainLayers to the passed Image in order """
         
         rlayer = self.get_layer_by_type(RiverLayer)        
         it = np.nditer(rlayer.matrix, flags=["multi_index"])
+        colormap = {}
         
         while (not it.finished):
-            v = it[0]
+            v = int(it[0])
             
-            if (v > 0):
+            if (v > 0):                
                 p = it.multi_index
-                color = None
-                
-                if (v % 6 == 0):
-                    color = (255, 255, 0)
-                elif (v % 5 == 0):
-                    color = (255, 0, 0)
-                elif (v % 4 == 0):
-                    color = (0, 255, 0)
-                elif (v % 3 == 0):
-                    color = (0, 0, 255)
-                elif (v % 2 == 0):
-                    color = (0, 255, 255)
-                else:
-                    color = (255, 0, 255)
-                
+                color = self._get_colormap_entry(v)
                 img.putpixel((p[1], p[0]), color)
             
             it.iternext()

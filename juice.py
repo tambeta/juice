@@ -3,6 +3,7 @@
 import array
 import pprint
 import pyglet
+import random
 
 from juice.heightmap import Heightmap
 from juice.terrain import Terrain
@@ -19,12 +20,13 @@ def main():
     GAME_HEIGHT = 600
     
     window = pyglet.window.Window(GAME_WIDTH, GAME_HEIGHT)
+    randseed = None
     
-    terr = Terrain(17)
-    terr.add_layer(RiverLayer())
+    terr = Terrain(65, randseed=randseed)
+    terr.add_layer(RiverLayer(randseed=randseed))
     terr.generate()
 
-    img = terr.get_imgdata(scaling=16)
+    img = terr.get_imgdata(scaling=8)
 
     @window.event
     def on_draw():

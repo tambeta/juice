@@ -1,5 +1,6 @@
 
 import numpy as np
+import random
 
 class TerrainLayer:
 
@@ -8,12 +9,15 @@ class TerrainLayer:
     TerrainLayer will be added to the passed Terrain.
     """
 
-    def __init__(self):
+    def __init__(self, randseed=None):
         if (type(self) is TerrainLayer):
             raise TypeError("Cannot instantiate TerrainLayer directly")
         
         self.matrix = None
         self.terrain = None
+        
+        random.seed(randseed)
+        np.random.seed(randseed)
         
     def generate(self):
         pass
@@ -32,8 +36,8 @@ class TerrainLayer:
                     return
 
 class RiverLayer(TerrainLayer):
-    def __init__(self, *args):
-        super().__init__(*args)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         
     def generate(self):
         
@@ -95,22 +99,33 @@ class RiverLayer(TerrainLayer):
             ok_neighbors.append((x, y))
             return True
     
+    def _delete_river(self, river_id):
+        matrix = self.matrix
+        it = np.nditer(matrix, flags=["multi_index"])
+        
+        while (not it.finished):
+            if (it[0] == river_id):
+                p = it.multi_index                
+                matrix[p[0], p[1]] = 0
+            it.iternext()
+    
     def _generate_river(self, x, y, river_id, iteration=1):
         
-        """ Generate a river starting from (x, y). TODO: check if water
-        level has been reached, otherwise delete river; allow converging
-        with other river
+        """ Generate a river starting from (x, y). Returns true on success,
+        false otherwise. Invoked recursively.
+        
+        TODO: allow converging with other river
         """
         
         hmatrix = self.terrain.heightmap.matrix
         matrix = self.matrix
         ok_neighbors = []
+        ret = False
         
-        if (
-            (iteration == 1 and not self._confirm_square_ok(x, y, [], 0)) or
-            hmatrix[y, x] <= self.terrain.WATER_THRESHOLD
-        ):
-            return
+        if (iteration == 1 and not self._confirm_square_ok(x, y, [], 0)):
+            return False
+        if (hmatrix[y, x] <= self.terrain.WATER_THRESHOLD):
+            return True
         matrix[y, x] = river_id
         
         # Pick all suitable edge-neighbors for current position, sort by height
@@ -121,6 +136,12 @@ class RiverLayer(TerrainLayer):
         
         if (len(ok_neighbors)):
             p = ok_neighbors[0]
-            self._generate_river(p[0], p[1], river_id, iteration+1)
-        return
+            ret = self._generate_river(p[0], p[1], river_id, iteration+1)
+        
+        # Delete river upon final return, if not successful
+        
+        if (iteration == 1 and not ret):
+            self._delete_river(river_id)
+        
+        return ret
     
