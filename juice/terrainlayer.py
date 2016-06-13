@@ -96,26 +96,46 @@ class RiverLayer(TerrainLayer):
             self._generate_river(p[1], p[0], i)
             
 
-    def _confirm_square_ok(self, x, y, ok_neighbors, neigh_rivers_threshold):
+    def _confirm_square_ok(self, x, y, river_id, ok_neighbors, neigh_rivers_threshold, allow_others):
         
         """ Helper routine to confirm that a position is OK for a river. A
         position is suitable if itself or not more than neigh_rivers_threshold
-        of its edge neighbors are a river square.
+        of its edge neighbors are a river square. If allow_others is true, other
+        river IDs are ignored.
         """
         
         matrix = self.matrix
+        predicate = None
         n_river_nbrs = 0
+        
+        if (allow_others):
+            predicate = (lambda x, y: matrix[y, x] != river_id)
+        else:
+            predicate = (lambda x, y: matrix[y, x] == 0)
         
         def confirm_nbrs_not_river(x, y):
             nonlocal n_river_nbrs
-            if (matrix[y, x] != 0):
+            if (not predicate(x, y)):
                 n_river_nbrs += 1
         
         self._foreach_edge_neighbor(confirm_nbrs_not_river, x, y)
         
-        if (matrix[y, x] == 0 and n_river_nbrs <= neigh_rivers_threshold):
+        if (predicate(x, y) and n_river_nbrs <= neigh_rivers_threshold): #*
             ok_neighbors.append((x, y))
             return True
+    
+    def _is_square_converging(self, x, y, river_id):
+        matrix = self.matrix
+        is_converging = False
+        
+        def have_other_river_nbrs(x, y):
+            nonlocal is_converging
+            if (matrix[y, x] > 0 and matrix[y, x] != river_id):
+                is_converging = True
+                return False
+        
+        self._foreach_edge_neighbor(have_other_river_nbrs, x, y)
+        return is_converging
     
     def _delete_river(self, river_id):
         matrix = self.matrix
@@ -131,8 +151,6 @@ class RiverLayer(TerrainLayer):
         
         """ Generate a river starting from (x, y). Returns true on success,
         false otherwise. Invoked recursively.
-        
-        TODO: allow converging with other river
         """
         
         hmatrix = self.terrain.heightmap.matrix
@@ -140,16 +158,20 @@ class RiverLayer(TerrainLayer):
         ok_neighbors = []
         ret = False
         
-        if (iteration == 1 and not self._confirm_square_ok(x, y, [], 0)):
+        if (iteration == 1 and not self._confirm_square_ok(x, y, river_id, [], 0, False)):
             return False
-        if (hmatrix[y, x] <= self.terrain.SEA_THRESHOLD):
+        elif (hmatrix[y, x] <= self.terrain.SEA_THRESHOLD):
+            return True
+        elif (self._is_square_converging(x, y, river_id)):
+            matrix[y, x] = river_id
             return True
         matrix[y, x] = river_id
         
         # Pick all suitable edge-neighbors for current position, sort by height
         # and use the lowest suitable neighbor point for continuing recursively.
         
-        self._foreach_edge_neighbor(self._confirm_square_ok, x, y, ok_neighbors, 1)
+        self._foreach_edge_neighbor(
+            self._confirm_square_ok, x, y, river_id, ok_neighbors, 1, True)
         ok_neighbors.sort(key=lambda p: hmatrix[p[1], p[0]])
         
         if (len(ok_neighbors)):

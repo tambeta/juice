@@ -22,7 +22,7 @@ def main():
     window = pyglet.window.Window(GAME_WIDTH, GAME_HEIGHT)
     randseed = None
     
-    terr = Terrain(33, randseed=randseed)
+    terr = Terrain(65, randseed=randseed)
     terr.add_layer(SeaLayer(randseed=randseed))
     terr.add_layer(RiverLayer(randseed=randseed))
     terr.generate()

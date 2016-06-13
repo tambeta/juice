@@ -97,6 +97,9 @@ class Terrain:
         
         colormap = self._colormap
         
+        if (key == 255):
+            return (255, 0, 0)
+        
         if (key in colormap):
             color = colormap[key]
         else:                
@@ -116,8 +119,7 @@ class Terrain:
         layer_colorers = {}
         
         layer_colorers[SeaLayer] = (0, 0, 255)
-        #layer_colorers[RiverLayer] = (0, 0, 180)
-        layer_colorers[RiverLayer] = self._get_colormap_entry
+        layer_colorers[RiverLayer] = (0, 200, 0)
 
         for ltype in layer_types:
             rlayer = self.get_layer_by_type(ltype)
