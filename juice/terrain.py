@@ -8,8 +8,7 @@ from PIL import Image
 from warnings import warn
 
 from juice.heightmap import Heightmap
-from juice.terrainlayer import TerrainLayer
-from juice.terrainlayer import RiverLayer
+from juice.terrainlayer import TerrainLayer, RiverLayer, SeaLayer
 
 class Terrain:
 
@@ -18,7 +17,7 @@ class Terrain:
     ruled to apply _at_ threshold as well as above or below.
     """
     
-    WATER_THRESHOLD = 30
+    SEA_THRESHOLD = 30
     MOUNTAIN_THRESHOLD = 200
     
     RIVER_DENSITY = 0.15
@@ -113,17 +112,23 @@ class Terrain:
         
         """ Apply all TerrainLayers to the passed Image in order """
         
-        rlayer = self.get_layer_by_type(RiverLayer)        
-        it = np.nditer(rlayer.matrix, flags=["multi_index"])
-        colormap = {}
+        layer_types = (SeaLayer, RiverLayer)
+        layer_colorers = {}
         
-        while (not it.finished):
-            v = int(it[0])
+        layer_colorers[SeaLayer] = (0, 0, 255)
+        layer_colorers[RiverLayer] = (0, 0, 180)
+
+        for ltype in layer_types:
+            rlayer = self.get_layer_by_type(ltype)
+            it = np.nditer(rlayer.matrix, flags=["multi_index"])
+            colorer = layer_colorers[ltype]
             
-            if (v > 0):                
-                p = it.multi_index
-                color = self._get_colormap_entry(v)
-                img.putpixel((p[1], p[0]), color)
-            
-            it.iternext()
-        
+            while (not it.finished):
+                v = int(it[0])
+                
+                if (v > 0):                
+                    p = it.multi_index
+                    color = colorer(v) if callable(colorer) else colorer
+                    img.putpixel((p[1], p[0]), color)
+                
+                it.iternext()

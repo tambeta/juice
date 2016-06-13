@@ -21,7 +21,14 @@ class TerrainLayer:
         
     def generate(self):
         pass
+    
+    def _init_matrix(self):
         
+        """ Init the matrix and return it. """
+        
+        self.matrix = np.zeros(np.shape(self.terrain.heightmap.matrix), dtype=np.uint8)
+        return self.matrix
+    
     def _foreach_edge_neighbor(self, cb, x, y, *extra):
         
         """ Convenience routine to loop over all edge neigbors. Excludes invalid
@@ -35,6 +42,18 @@ class TerrainLayer:
                 if (cb(cx, cy, *extra) == False):
                     return
 
+class SeaLayer(TerrainLayer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+    def generate(self):
+        
+        """ Generate the sea layer based on sea threshold. """
+        
+        terrain = self.terrain
+        hmatrix = terrain.heightmap.matrix
+        self.matrix = np.where(hmatrix <= terrain.SEA_THRESHOLD, 1, 0)
+        
 class RiverLayer(TerrainLayer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -45,11 +64,10 @@ class RiverLayer(TerrainLayer):
         
         terrain = self.terrain
         mthr = terrain.MOUNTAIN_THRESHOLD
+        matrix = self._init_matrix()
         hmatrix = terrain.heightmap.matrix
         mtn_coords = np.array([])
-        rvr_source_coords = mtn_coords
-        
-        self.matrix = matrix = np.zeros(np.shape(hmatrix), dtype=np.uint8)
+        rvr_source_coords = mtn_coords        
         
         # Extract all coordinates above mountain threshold from
         # terrain's heightmap
@@ -124,7 +142,7 @@ class RiverLayer(TerrainLayer):
         
         if (iteration == 1 and not self._confirm_square_ok(x, y, [], 0)):
             return False
-        if (hmatrix[y, x] <= self.terrain.WATER_THRESHOLD):
+        if (hmatrix[y, x] <= self.terrain.SEA_THRESHOLD):
             return True
         matrix[y, x] = river_id
         

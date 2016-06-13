@@ -7,7 +7,7 @@ import random
 
 from juice.heightmap import Heightmap
 from juice.terrain import Terrain
-from juice.terrainlayer import TerrainLayer, RiverLayer
+from juice.terrainlayer import TerrainLayer, RiverLayer, SeaLayer
 
 def draw_point(x, y):
     pyglet.graphics.draw(1, pyglet.gl.GL_POINTS,
@@ -22,7 +22,8 @@ def main():
     window = pyglet.window.Window(GAME_WIDTH, GAME_HEIGHT)
     randseed = None
     
-    terr = Terrain(65, randseed=randseed)
+    terr = Terrain(33, randseed=randseed)
+    terr.add_layer(SeaLayer(randseed=randseed))
     terr.add_layer(RiverLayer(randseed=randseed))
     terr.generate()
 
