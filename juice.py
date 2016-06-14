@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import array
 import pprint
 import pyglet
@@ -15,12 +16,21 @@ def draw_point(x, y):
             ('c3B', (255, 0, 0))
         )   
 
+def parse_command_line():
+	parser = argparse.ArgumentParser(description = "Juice: the power grid game")
+	parser.add_argument(
+		"-r", "--random-seed", type=int, help="Specify random seed")
+	return parser.parse_args()
+
 def main():
     GAME_WIDTH = 800
     GAME_HEIGHT = 600
     
+    args = parse_command_line()
     window = pyglet.window.Window(GAME_WIDTH, GAME_HEIGHT)
-    randseed = None
+    randseed = args.random_seed \
+        if args.random_seed \
+        else random.randint(1, 10000)
     
     terr = Terrain(65, randseed=randseed)
     terr.add_layer(SeaLayer(randseed=randseed))
@@ -35,6 +45,7 @@ def main():
         img.blit(0, 0)
     
     #window.push_handlers(pyglet.window.event.WindowEventLogger())
+    print("random seed:", randseed)
     pyglet.app.run()
 
 main()

@@ -17,10 +17,12 @@ class Terrain:
     ruled to apply _at_ threshold as well as above or below.
     """
     
-    SEA_THRESHOLD = 30
     MOUNTAIN_THRESHOLD = 200
     
-    RIVER_DENSITY = 0.15
+    SEA_THRESHOLD = 64
+    MIN_SEA_SIZE = 12
+    
+    RIVER_DENSITY = 0.08
     MIN_RIVER_SOURCES = 4
     
     def __init__(self, dim, randseed=None):
@@ -118,13 +120,22 @@ class Terrain:
         layer_types = (SeaLayer, RiverLayer)
         layer_colorers = {}
         
-        layer_colorers[SeaLayer] = (0, 0, 255)
+        #layer_colorers[SeaLayer] = (0, 0, 255)
+        layer_colorers[SeaLayer] = self._get_colormap_entry
         layer_colorers[RiverLayer] = (0, 200, 0)
+        #layer_colorers[RiverLayer] = self._get_colormap_entry
 
         for ltype in layer_types:
-            rlayer = self.get_layer_by_type(ltype)
-            it = np.nditer(rlayer.matrix, flags=["multi_index"])
+            layer = None
             colorer = layer_colorers[ltype]
+            
+            try:
+                layer = self.get_layer_by_type(ltype)
+            except LookupError as e:
+                warn("Cannot get " + str(ltype.__name__) + " for composition")
+                continue
+            
+            it = np.nditer(layer.matrix, flags=["multi_index"])
             
             while (not it.finished):
                 v = int(it[0])
