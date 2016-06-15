@@ -1,6 +1,7 @@
 
-import numpy as np
 import random
+
+import numpy as np
 import scipy.ndimage as ndi
 
 class RequirementError(Exception):
@@ -135,7 +136,9 @@ class RiverLayer(TerrainLayer):
 
             if (n_river_tiles < terrain.MIN_RIVER_SOURCES):
                 n_river_tiles = min(len(mtn_coords), terrain.MIN_RIVER_SOURCES)
-
+            elif (n_river_tiles > terrain.MAX_RIVER_SOURCES):
+                n_river_tiles = terrain.MAX_RIVER_SOURCES
+            
             np.random.shuffle(mtn_coords)
             rvr_source_coords = mtn_coords[0:n_river_tiles]
         else:

@@ -1,11 +1,11 @@
 
 import colorsys
+import random
+from warnings import warn
+
 import numpy as np
 import pyglet
-import random
-
 from PIL import Image
-from warnings import warn
 
 from juice.heightmap import Heightmap
 from juice.terrainlayer import TerrainLayer, RiverLayer, SeaLayer
@@ -22,8 +22,9 @@ class Terrain:
     SEA_THRESHOLD = 64
     MIN_SEA_SIZE = 12
     
-    RIVER_DENSITY = 0.08
+    RIVER_DENSITY = 0.05
     MIN_RIVER_SOURCES = 4
+    MAX_RIVER_SOURCES = 20
     
     def __init__(self, dim, randseed=None):
         self.heightmap = Heightmap(dim, randseed=randseed)
@@ -57,11 +58,17 @@ class Terrain:
         
         raise LookupError("Layer of type " + str(ltype) + " not found") 
     
-    def generate(self):
+    def generate(self, post_generate_cb=None):
         self.heightmap.generate()
+
+        if (callable(post_generate_cb)):
+            post_generate_cb(self.heightmap)
         
         for layer in (self._layers):
             layer.generate()
+            
+            if (callable(post_generate_cb)):
+                post_generate_cb(layer)
         
     def get_imgdata(self, scaling=1):
         

@@ -3,18 +3,35 @@
 import argparse
 import array
 import pprint
-import pyglet
 import random
+import sys
+import time
+
+import pyglet
 
 from juice.heightmap import Heightmap
 from juice.terrain import Terrain
 from juice.terrainlayer import TerrainLayer, RiverLayer, SeaLayer
 
-def draw_point(x, y):
-    pyglet.graphics.draw(1, pyglet.gl.GL_POINTS,
-            ("v2i", (x, y)),
-            ('c3B', (255, 0, 0))
-        )   
+_g = {}
+
+
+
+def timed_print(*args):
+    msg = ""
+    delta = 0
+    t = time.process_time()
+    
+    if ("timer_last_t" not in _g):
+        delta = t
+    else:
+        delta = t - _g["timer_last_t"]
+    
+    for i in args:
+        msg += str(i) + " "
+    
+    _g["timer_last_t"] = t
+    print("{:.4f} {:.4f} {}".format(t, delta, msg))
 
 def parse_command_line():
 	parser = argparse.ArgumentParser(description = "Juice: the power grid game")
@@ -32,12 +49,12 @@ def main():
         if args.random_seed \
         else random.randint(1, 10000)
     
-    terr = Terrain(65, randseed=randseed)
+    terr = Terrain(256, randseed=randseed)
     terr.add_layer(SeaLayer(randseed=randseed))
     terr.add_layer(RiverLayer(randseed=randseed))
-    terr.generate()
+    terr.generate(post_generate_cb=timed_print)
 
-    img = terr.get_imgdata(scaling=8)
+    img = terr.get_imgdata(scaling=2)
 
     @window.event
     def on_draw():

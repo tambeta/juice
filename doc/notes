@@ -1,0 +1,8 @@
+
+Notes
+-----
+
+Keep differing coordinate systems in mind. Juice in general uses (x=0, y=0) in
+upper left corner. numpy uses zero-based (row, col), i.e. (y=0, x=0) in upper
+left corner indexing. pyglet uses (x=0, y=0) in lower left corner indexing.
+

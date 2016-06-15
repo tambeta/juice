@@ -19,11 +19,12 @@ class Heightmap:
     def __init__(
         self, dim,
         peturb_range=PETURB_RANGE, peturb_decrease=PETURB_DECREASE,
-        randseed = None
+        min_cell_size = 1, randseed = None
     ):
         self.peturb_range = peturb_range
         self.peturb_decrease = peturb_decrease
-
+        self.min_cell_size = min_cell_size
+        
         self.matrix = None
         self._dim = dim
 
@@ -32,36 +33,60 @@ class Heightmap:
 
     def generate(self):
 
-        """ Generate a heightmap using the diamond-square algorithm """
+        """ Generate a heightmap using the diamond-square algorithm. Note that
+        internally, a square with side dim + 1 is used (where dim is a power of
+        two), as the algorithm requires symmetry, but we want to return a
+        "pretty" side == 2**x matrix for various reasons, including playing nice
+        with approximation / filling.
+        """
 
-        square_dim = dim = self._dim
+        min_square_dim = self.min_cell_size + 1
+        square_dim = dim = self._dim + 1
         rand_range = self.peturb_range
         t = self.matrix = np.zeros((dim, dim), dtype=np.uint8)
-        x = 0
-        y = 0
-
+        
+        if (min_square_dim < 2):
+            min_square_dim = 2
+        
         # Init corner values
 
         t[0, 0] = randint(*self.INITIAL_RANGE)
         t[0, dim-1] = randint(*self.INITIAL_RANGE)
         t[dim-1, 0] = randint(*self.INITIAL_RANGE)
         t[dim-1, dim-1] = randint(*self.INITIAL_RANGE)
-
-        # Run the algorithm with iteratively smaller squares
-
-        while (square_dim > 2):
+        
+        # Helper routine to approximate the height map down to square_dim
+        
+        def approximate_to_squaredim(square_dim, rand_range, fill=False):
+            x = 0
+            y = 0
+        
             while (y < dim - 1):
                 while (x < dim - 1):
-                    sq_average = self._set_square_average(x, y, square_dim, rand_range)
-                    d_averages = self._set_diamond_averages(x, y, square_dim, rand_range)
+                    sq_average = self._set_square_average(\
+                        x, y, square_dim, rand_range, fill)
+                    if (not fill):
+                        d_averages = self._set_diamond_averages(\
+                            x, y, square_dim, rand_range)
                     x += (square_dim - 1)
                 x = 0
                 y += (square_dim - 1)
             y = 0
-            square_dim = square_dim // 2 + 1
-            rand_range -= int(rand_range * self.peturb_decrease)
+            
+        # Run the algorithm with iteratively smaller squares
 
-        self._stretch_levels()
+        while (square_dim > min_square_dim):
+            approximate_to_squaredim(square_dim, rand_range)
+            square_dim = square_dim // 2 + 1
+            rand_range -= int(rand_range * self.peturb_decrease)                    
+        
+        # If algorithm didn't run to single cell, approximately fill the rest
+        
+        if (square_dim > 2):
+            approximate_to_squaredim(square_dim, rand_range, True)
+
+        self.matrix = t[0:dim-1, 0:dim-1].copy(order="C")
+        self._stretch_levels()        
         return self.matrix
 
     def _set_point_perturbed_value(self, x, y, val, perturb_range):
@@ -75,8 +100,14 @@ class Heightmap:
             val = 255
 
         t[x, y] = val
+        return val
 
-    def _set_square_average(self, x, y, square_dim, rand_range):
+    def _set_square_average(self, x, y, square_dim, rand_range, fill=False):
+        
+        """ Run the square phase of the algorithm. If fill is true, fill the
+        whole square instead of just the midpoint.
+        """
+        
         t = self.matrix
 
         p1 = t[x, y]
@@ -86,8 +117,11 @@ class Heightmap:
 
         avg = np.sum([p1, p2, p3, p4]) // 4
         midpoint = (square_dim - 1) // 2
-
-        self._set_point_perturbed_value(x + midpoint, y + midpoint, avg, rand_range)
+        val = self._set_point_perturbed_value(
+            x + midpoint, y + midpoint, avg, rand_range)
+            
+        if (fill):
+            t[x:x+square_dim-1, y:y+square_dim-1] = val
 
     def _set_diamond_average(self, x, y, halfsquare, rand_range):
 
@@ -163,10 +197,7 @@ class Heightmap:
         dim = self._dim
 
         for i in range(1000):
-            if (dim == 2**i + 1):
+            if (dim == 2**i):
                 return
 
-        raise ValueError("Heightmap dimension must be a power of two + 1")
-
-    def __str__(self):
-        return str(self.matrix)
+        raise ValueError("Heightmap dimension must be a power of two")
