@@ -204,6 +204,7 @@ class RiverLayer(TerrainLayer):
         """
 
         hmatrix = self.terrain.heightmap.matrix
+        smatrix = self.terrain.get_layer_by_type(SeaLayer).matrix
         matrix = self.matrix
 
         if (not self._confirm_square_ok(x, y, river_id, [], 0, False)):
@@ -212,7 +213,7 @@ class RiverLayer(TerrainLayer):
         while True:
             ok_neighbors = []
             
-            if (hmatrix[y, x] <= self.terrain.SEA_THRESHOLD):
+            if (smatrix[y, x] > 0):
                 return True
             elif (self._is_square_converging(x, y, river_id)):
                 matrix[y, x] = river_id
