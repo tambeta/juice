@@ -197,41 +197,43 @@ class RiverLayer(TerrainLayer):
                 matrix[p[0], p[1]] = 0
             it.iternext()
 
-    def _generate_river(self, x, y, river_id, iteration=1):
+    def _generate_river(self, x, y, river_id):
 
-        """ Generate a river starting from (x, y). Returns true on success,
-        false otherwise. Invoked recursively.
+        """ Generate a river starting from (x, y). Returns True on success,
+        False otherwise.
         """
 
         hmatrix = self.terrain.heightmap.matrix
         matrix = self.matrix
-        ok_neighbors = []
-        ret = False
 
-        if (iteration == 1 and not self._confirm_square_ok(x, y, river_id, [], 0, False)):
+        if (not self._confirm_square_ok(x, y, river_id, [], 0, False)):
             return False
-        elif (hmatrix[y, x] <= self.terrain.SEA_THRESHOLD):
-            return True
-        elif (self._is_square_converging(x, y, river_id)):
+            
+        while True:
+            ok_neighbors = []
+            
+            if (hmatrix[y, x] <= self.terrain.SEA_THRESHOLD):
+                return True
+            elif (self._is_square_converging(x, y, river_id)):
+                matrix[y, x] = river_id
+                return True
             matrix[y, x] = river_id
-            return True
-        matrix[y, x] = river_id
 
-        # Pick all suitable edge-neighbors for current position, sort by height
-        # and use the lowest suitable neighbor point for continuing recursively.
+            # Pick all suitable edge-neighbors for current position, sort by height
+            # and use the lowest suitable neighbor point for continuing. Delete river
+            # and fail if no suitabe neighbors.
 
-        self._foreach_edge_neighbor(
-            self._confirm_square_ok, x, y, river_id, ok_neighbors, 1, True)
-        ok_neighbors.sort(key=lambda p: hmatrix[p[1], p[0]])
+            self._foreach_edge_neighbor(
+                self._confirm_square_ok, x, y, river_id, ok_neighbors, 1, True)
+            ok_neighbors.sort(key=lambda p: hmatrix[p[1], p[0]])
 
-        if (len(ok_neighbors)):
-            p = ok_neighbors[0]
-            ret = self._generate_river(p[0], p[1], river_id, iteration+1)
+            if (len(ok_neighbors)):
+                p = ok_neighbors[0]
+                x = p[0]
+                y = p[1]
+            else:
+                self._delete_river(river_id)
+                return False
 
-        # Delete river upon final return, if not successful
-
-        if (iteration == 1 and not ret):
-            self._delete_river(river_id)
-
-        return ret
+        raise RuntimeError("Should never execute this line")
 
