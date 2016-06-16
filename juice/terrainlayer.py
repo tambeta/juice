@@ -226,6 +226,7 @@ class RiverLayer(TerrainLayer):
 
             self._foreach_edge_neighbor(
                 self._confirm_square_ok, x, y, river_id, ok_neighbors, 1, True)
+            random.shuffle(ok_neighbors)
             ok_neighbors.sort(key=lambda p: hmatrix[p[1], p[0]])
 
             if (len(ok_neighbors)):

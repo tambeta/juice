@@ -46,16 +46,18 @@ def parse_command_line():
 def main():
     GAME_WIDTH = 800
     GAME_HEIGHT = 600
+    TERRAIN_DIM = 512
     
     args = parse_command_line()
-    window = pyglet.window.Window(GAME_WIDTH, GAME_HEIGHT)
     randseed = args.random_seed \
         if args.random_seed \
         else random.randint(1, 10000)
+    scaling = min(GAME_WIDTH, GAME_HEIGHT) // TERRAIN_DIM
+    window = pyglet.window.Window(GAME_WIDTH, GAME_HEIGHT)
     
     print("random seed:", randseed)
     
-    terr = Terrain(256, randseed=randseed)
+    terr = Terrain(TERRAIN_DIM, randseed=randseed)
     terr.add_layer(SeaLayer(randseed=randseed))
     terr.add_layer(RiverLayer(randseed=randseed))
     terr.generate(post_generate_cb=timed_print)
@@ -63,7 +65,7 @@ def main():
     if (args.timing):
         sys.exit(0)
     
-    img = terr.get_imgdata(scaling=2)
+    img = terr.get_imgdata(scaling=scaling)
 
     @window.event
     def on_draw():

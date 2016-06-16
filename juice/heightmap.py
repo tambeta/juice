@@ -1,9 +1,10 @@
 
 import array
-import numpy as np
 import random
-
 from random import randint
+
+import numpy as np
+import scipy.ndimage as ndimage
 
 class Heightmap:
 
@@ -19,12 +20,14 @@ class Heightmap:
     def __init__(
         self, dim,
         peturb_range=PETURB_RANGE, peturb_decrease=PETURB_DECREASE,
-        min_cell_size = 1, randseed = None
+        min_cell_size = 1, randseed = None, noise_range=0, blur_sigma=0
     ):
         self.peturb_range = peturb_range
         self.peturb_decrease = peturb_decrease
+        self.noise_range = noise_range
+        self.blur_sigma = blur_sigma
         self.min_cell_size = min_cell_size
-        
+
         self.matrix = None
         self._dim = dim
 
@@ -41,53 +44,83 @@ class Heightmap:
         """
 
         min_square_dim = self.min_cell_size + 1
-        square_dim = dim = self._dim + 1
+        dim = self._dim
+        square_dim = dim + 1
         rand_range = self.peturb_range
-        t = self.matrix = np.zeros((dim, dim), dtype=np.uint8)
-        
+        t = self.matrix = np.zeros((square_dim, square_dim), dtype=np.uint8)
+
         if (min_square_dim < 2):
             min_square_dim = 2
-        
+
         # Init corner values
 
         t[0, 0] = randint(*self.INITIAL_RANGE)
-        t[0, dim-1] = randint(*self.INITIAL_RANGE)
-        t[dim-1, 0] = randint(*self.INITIAL_RANGE)
-        t[dim-1, dim-1] = randint(*self.INITIAL_RANGE)
-        
-        # Helper routine to approximate the height map down to square_dim
-        
-        def approximate_to_squaredim(square_dim, rand_range, fill=False):
-            x = 0
-            y = 0
-        
-            while (y < dim - 1):
-                while (x < dim - 1):
-                    sq_average = self._set_square_average(\
-                        x, y, square_dim, rand_range, fill)
-                    if (not fill):
-                        d_averages = self._set_diamond_averages(\
-                            x, y, square_dim, rand_range)
-                    x += (square_dim - 1)
-                x = 0
-                y += (square_dim - 1)
-            y = 0
-            
+        t[0, dim] = randint(*self.INITIAL_RANGE)
+        t[dim, 0] = randint(*self.INITIAL_RANGE)
+        t[dim, dim] = randint(*self.INITIAL_RANGE)
+
         # Run the algorithm with iteratively smaller squares
 
         while (square_dim > min_square_dim):
-            approximate_to_squaredim(square_dim, rand_range)
+            self._approximate_to_squaredim(square_dim, rand_range)
             square_dim = square_dim // 2 + 1
-            rand_range -= int(rand_range * self.peturb_decrease)                    
-        
-        # If algorithm didn't run to single cell, approximately fill the rest
-        
-        if (square_dim > 2):
-            approximate_to_squaredim(square_dim, rand_range, True)
+            rand_range -= int(rand_range * self.peturb_decrease)
 
-        self.matrix = t[0:dim-1, 0:dim-1].copy(order="C")
-        self._stretch_levels()        
+        # If algorithm didn't run to single cell, approximately fill the rest
+
+        if (square_dim > 2):
+            self._approximate_to_squaredim(square_dim, rand_range, True)
+        
+        self.matrix = t[0:dim, 0:dim].copy(order="C")
+        self._stretch_levels()
+        self._apply_noise()
+        self._apply_blur()
+        
         return self.matrix
+
+    def _apply_noise(self):
+        matrix = self.matrix
+        nrange = self.noise_range
+        halfrange = nrange // 2
+        it = np.nditer(matrix, flags=["multi_index"])
+        
+        if (nrange <= 0):
+            return
+            
+        while (not it.finished):
+            v = int(it[0])            
+            p = it.multi_index
+            
+            v = randint(v-halfrange, v+halfrange)
+            matrix[p] = max(0, min(v, 255))
+            it.iternext()
+            
+    def _apply_blur(self):
+        matrix = self.matrix
+        sigma = self.blur_sigma
+        
+        if (sigma <= 0):
+            return
+        self.matrix = ndimage.filters.gaussian_filter(matrix, sigma=sigma)
+
+    def _approximate_to_squaredim(self, square_dim, rand_range, fill=False):
+        
+        # Helper routine to approximate the height map down to square_dim
+        
+        x = 0
+        y = 0
+        dim = self._dim
+
+        while (y < dim):
+            while (x < dim):
+                sq_average = self._set_square_average(\
+                    x, y, square_dim, rand_range, fill)
+                if (not fill):
+                    d_averages = self._set_diamond_averages(\
+                        x, y, square_dim, rand_range)
+                x += (square_dim - 1)
+            x = 0
+            y += (square_dim - 1)
 
     def _set_point_perturbed_value(self, x, y, val, perturb_range):
         t = self.matrix
@@ -103,11 +136,11 @@ class Heightmap:
         return val
 
     def _set_square_average(self, x, y, square_dim, rand_range, fill=False):
-        
+
         """ Run the square phase of the algorithm. If fill is true, fill the
         whole square instead of just the midpoint.
         """
-        
+
         t = self.matrix
 
         p1 = t[x, y]
@@ -119,7 +152,7 @@ class Heightmap:
         midpoint = (square_dim - 1) // 2
         val = self._set_point_perturbed_value(
             x + midpoint, y + midpoint, avg, rand_range)
-            
+
         if (fill):
             t[x:x+square_dim-1, y:y+square_dim-1] = val
 

@@ -26,7 +26,10 @@ class Terrain:
     MIN_RIVER_SOURCES = 4
     
     def __init__(self, dim, randseed=None):
-        self.heightmap = Heightmap(dim, randseed=randseed)
+        self.heightmap = Heightmap(
+            dim, randseed=randseed,
+            min_cell_size=4, noise_range=35, blur_sigma=1.5
+        )
         self.dim = dim
         
         self._layers = []
