@@ -136,8 +136,6 @@ class RiverLayer(TerrainLayer):
 
             if (n_river_tiles < terrain.MIN_RIVER_SOURCES):
                 n_river_tiles = min(len(mtn_coords), terrain.MIN_RIVER_SOURCES)
-            elif (n_river_tiles > terrain.MAX_RIVER_SOURCES):
-                n_river_tiles = terrain.MAX_RIVER_SOURCES
             
             np.random.shuffle(mtn_coords)
             rvr_source_coords = mtn_coords[0:n_river_tiles]
@@ -147,6 +145,8 @@ class RiverLayer(TerrainLayer):
         # For each river source, generate a river
 
         for (i, p) in enumerate(rvr_source_coords, start=1):
+            if (i > 255):
+                break
             self._generate_river(p[1], p[0], i)
 
     def _confirm_square_ok(self, x, y, river_id, ok_neighbors, neigh_rivers_threshold, allow_others):
@@ -192,13 +192,7 @@ class RiverLayer(TerrainLayer):
 
     def _delete_river(self, river_id):
         matrix = self.matrix
-        it = np.nditer(matrix, flags=["multi_index"])
-
-        while (not it.finished):
-            if (it[0] == river_id):
-                p = it.multi_index
-                matrix[p[0], p[1]] = 0
-            it.iternext()
+        matrix[matrix == river_id] = 0
 
     def _generate_river(self, x, y, river_id):
 
@@ -212,6 +206,9 @@ class RiverLayer(TerrainLayer):
 
         if (not self._confirm_square_ok(x, y, river_id, [], 0, False)):
             return False
+        if (river_id >= 2 ** (matrix.dtype.itemsize * 8)):
+            raise ValueError(
+                "River ID {} is larger than can be held by {}".format(river_id, matrix.dtype))
             
         while True:
             ok_neighbors = []

@@ -37,6 +37,10 @@ def parse_command_line():
 	parser = argparse.ArgumentParser(description = "Juice: the power grid game")
 	parser.add_argument(
 		"-r", "--random-seed", type=int, help="Specify random seed")
+	parser.add_argument(
+		"-t", "--timing", action="store_true",
+        help="Timing / profiling mode, exit after terrain generation"
+    )
 	return parser.parse_args()
 
 def main():
@@ -49,11 +53,16 @@ def main():
         if args.random_seed \
         else random.randint(1, 10000)
     
+    print("random seed:", randseed)
+    
     terr = Terrain(256, randseed=randseed)
     terr.add_layer(SeaLayer(randseed=randseed))
     terr.add_layer(RiverLayer(randseed=randseed))
     terr.generate(post_generate_cb=timed_print)
-
+    
+    if (args.timing):
+        sys.exit(0)
+    
     img = terr.get_imgdata(scaling=2)
 
     @window.event
@@ -61,8 +70,7 @@ def main():
         window.clear()
         img.blit(0, 0)
     
-    #window.push_handlers(pyglet.window.event.WindowEventLogger())
-    print("random seed:", randseed)
+    #window.push_handlers(pyglet.window.event.WindowEventLogger())    
     pyglet.app.run()
 
 main()

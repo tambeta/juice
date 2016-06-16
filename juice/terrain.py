@@ -17,14 +17,13 @@ class Terrain:
     ruled to apply _at_ threshold as well as above or below.
     """
     
-    MOUNTAIN_THRESHOLD = 200
+    MOUNTAIN_THRESHOLD = 192
     
-    SEA_THRESHOLD = 64
-    MIN_SEA_SIZE = 12
+    SEA_THRESHOLD = 96
+    MIN_SEA_SIZE = 32
     
     RIVER_DENSITY = 0.05
     MIN_RIVER_SOURCES = 4
-    MAX_RIVER_SOURCES = 20
     
     def __init__(self, dim, randseed=None):
         self.heightmap = Heightmap(dim, randseed=randseed)
