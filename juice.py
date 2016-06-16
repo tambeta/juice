@@ -46,7 +46,7 @@ def parse_command_line():
 def main():
     GAME_WIDTH = 800
     GAME_HEIGHT = 600
-    TERRAIN_DIM = 512
+    TERRAIN_DIM = 64
     
     args = parse_command_line()
     randseed = args.random_seed \

@@ -31,6 +31,13 @@ class TerrainLayer:
         random.seed(randseed)
         np.random.seed(randseed)
 
+    def _init_matrix(self):
+
+        """ Init the matrix and return it. """
+
+        self.matrix = np.zeros(np.shape(self.terrain.heightmap.matrix), dtype=np.uint8)
+        return self.matrix
+    
     def _check_requirements(self):
 
         """ A wrapper for checking the generation requirements, i.e. layers that
@@ -54,13 +61,6 @@ class TerrainLayer:
         except Exception as e:
             self.matrix = None
             raise e
-
-    def _init_matrix(self):
-
-        """ Init the matrix and return it. """
-
-        self.matrix = np.zeros(np.shape(self.terrain.heightmap.matrix), dtype=np.uint8)
-        return self.matrix
 
     def _foreach_edge_neighbor(self, cb, x, y, *extra):
 
@@ -149,51 +149,6 @@ class RiverLayer(TerrainLayer):
                 break
             self._generate_river(p[1], p[0], i)
 
-    def _confirm_square_ok(self, x, y, river_id, ok_neighbors, neigh_rivers_threshold, allow_others):
-
-        """ Helper routine to confirm that a position is OK for a river. A
-        position is suitable if itself or not more than neigh_rivers_threshold
-        of its edge neighbors are a river square. If allow_others is true, other
-        river IDs are ignored.
-        """
-
-        matrix = self.matrix
-        predicate = None
-        n_river_nbrs = 0
-
-        if (allow_others):
-            predicate = (lambda x, y: matrix[y, x] != river_id)
-        else:
-            predicate = (lambda x, y: matrix[y, x] == 0)
-
-        def confirm_nbrs_not_river(x, y):
-            nonlocal n_river_nbrs
-            if (not predicate(x, y)):
-                n_river_nbrs += 1
-
-        self._foreach_edge_neighbor(confirm_nbrs_not_river, x, y)
-
-        if (predicate(x, y) and n_river_nbrs <= neigh_rivers_threshold): #*
-            ok_neighbors.append((x, y))
-            return True
-
-    def _is_square_converging(self, x, y, river_id):
-        matrix = self.matrix
-        is_converging = False
-
-        def have_other_river_nbrs(x, y):
-            nonlocal is_converging
-            if (matrix[y, x] > 0 and matrix[y, x] != river_id):
-                is_converging = True
-                return False
-
-        self._foreach_edge_neighbor(have_other_river_nbrs, x, y)
-        return is_converging
-
-    def _delete_river(self, river_id):
-        matrix = self.matrix
-        matrix[matrix == river_id] = 0
-
     def _generate_river(self, x, y, river_id):
 
         """ Generate a river starting from (x, y). Returns True on success,
@@ -234,8 +189,48 @@ class RiverLayer(TerrainLayer):
                 x = p[0]
                 y = p[1]
             else:
-                self._delete_river(river_id)
+                matrix[matrix == river_id] = 0
                 return False
 
         raise RuntimeError("Should never execute this line")
 
+    def _confirm_square_ok(self, x, y, river_id, ok_neighbors, neigh_rivers_threshold, allow_others):
+
+        """ Helper routine to confirm that a position is OK for a river. A
+        position is suitable if itself or not more than neigh_rivers_threshold
+        of its edge neighbors are a river square. If allow_others is true, other
+        river IDs are ignored.
+        """
+
+        matrix = self.matrix
+        predicate = None
+        n_river_nbrs = 0
+
+        if (allow_others):
+            predicate = (lambda x, y: matrix[y, x] != river_id)
+        else:
+            predicate = (lambda x, y: matrix[y, x] == 0)
+
+        def confirm_nbrs_not_river(x, y):
+            nonlocal n_river_nbrs
+            if (not predicate(x, y)):
+                n_river_nbrs += 1
+
+        self._foreach_edge_neighbor(confirm_nbrs_not_river, x, y)
+
+        if (predicate(x, y) and n_river_nbrs <= neigh_rivers_threshold): #*
+            ok_neighbors.append((x, y))
+            return True
+
+    def _is_square_converging(self, x, y, river_id):
+        matrix = self.matrix
+        is_converging = False
+
+        def have_other_river_nbrs(x, y):
+            nonlocal is_converging
+            if (matrix[y, x] > 0 and matrix[y, x] != river_id):
+                is_converging = True
+                return False
+
+        self._foreach_edge_neighbor(have_other_river_nbrs, x, y)
+        return is_converging
