@@ -1,13 +1,16 @@
 
+import abc
 import random
 
 import numpy as np
 import scipy.ndimage as ndi
 
+from juice.heightmap import Heightmap
+
 class RequirementError(Exception):
     pass
 
-class TerrainLayer:
+class TerrainLayer(metaclass=abc.ABCMeta):
 
     """ A layer of Terrain. The TerrainLayer base class cannot be
     instantiated directly. Subclasses must call __init__ from their
@@ -24,13 +27,18 @@ class TerrainLayer:
         self.matrix = None
         self.terrain = None
         self._require = None
+        self._randseed = randseed
 
         self._generate = self.generate
         self.generate = self._check_requirements
 
         random.seed(randseed)
         np.random.seed(randseed)
-
+    
+    @abc.abstractmethod
+    def generate(self):
+        pass
+    
     def _init_matrix(self):
 
         """ Init the matrix and return it. """
@@ -74,6 +82,28 @@ class TerrainLayer:
             if (cx >= 0 and cy >= 0 and cx < dim and cy < dim):
                 if (cb(cx, cy, *extra) == False):
                     return
+    
+    def _label_segments(self, min_size=0):
+        
+        """ Label contiguous segments of the matrix and label these with
+        successive integers starting with 1. Optionally leave only segments with
+        size at least min_size. Returns original number of labels.
+        """
+        
+        labels = ndi.label(self.matrix)
+        matrix = labels[0]
+        n_labels = labels[1]
+        
+        if (min_size > 0):
+            for i in range(1, n_labels + 1):
+                label_indices = np.where(matrix == i)
+                n = len(label_indices[0])
+
+                if (n < min_size):
+                    matrix[label_indices] = 0
+                
+        self.matrix = matrix
+        return n_labels
 
 class SeaLayer(TerrainLayer):
     def __init__(self, *args, **kwargs):
@@ -88,22 +118,9 @@ class SeaLayer(TerrainLayer):
         terrain = self.terrain
         hmatrix = terrain.heightmap.matrix
 
-        matrix = \
+        self.matrix = \
             np.where(hmatrix <= terrain.SEA_THRESHOLD, 1, 0)
-        labels = ndi.label(matrix)
-        matrix = labels[0]
-        n_labels = labels[1]
-
-        # Filter seas below threshold size
-
-        for i in range(1, n_labels + 1):
-            sea_indices = np.where(matrix == i)
-            n = len(sea_indices[0])
-
-            if (n < terrain.MIN_SEA_SIZE):
-                matrix[sea_indices] = 0
-
-        self.matrix = matrix
+        self._label_segments(terrain.MIN_SEA_SIZE)
 
 class RiverLayer(TerrainLayer):
     def __init__(self, *args, **kwargs):
@@ -234,3 +251,34 @@ class RiverLayer(TerrainLayer):
 
         self._foreach_edge_neighbor(have_other_river_nbrs, x, y)
         return is_converging
+
+class BiomeLayer(TerrainLayer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)        
+        self._require = (SeaLayer, RiverLayer)
+
+    def generate(self):
+        terrain = self.terrain
+        hmatrix = terrain.heightmap.matrix
+        smatrix = terrain.get_layer_by_type(SeaLayer).matrix
+        rmatrix = terrain.get_layer_by_type(RiverLayer).matrix
+        biome_ids = (terrain.FOREST_ID, terrain.DESERT_ID)
+        
+        self.matrix = np.where(np.logical_and(
+            hmatrix > terrain.SEA_THRESHOLD + terrain.BIOME_H_DELTA, 
+            hmatrix < terrain.MOUNTAIN_THRESHOLD - terrain.BIOME_H_DELTA
+        ), 1, 0)
+        n_segments = \
+            self._label_segments(terrain.MIN_BIOME_SIZE)        
+        
+        for segment_id in range(1, n_segments + 1):
+            segment_size = len(np.where(self.matrix == segment_id)[0])
+            
+            if (segment_size):
+                biome_id = random.sample(biome_ids, 1)[0]
+                self.matrix[self.matrix == segment_id] = biome_id
+        
+        self.matrix = np.where(
+            np.logical_and(rmatrix == 0, smatrix == 0),
+            self.matrix, 0
+        )

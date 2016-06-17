@@ -8,7 +8,7 @@ import pyglet
 from PIL import Image
 
 from juice.heightmap import Heightmap
-from juice.terrainlayer import TerrainLayer, RiverLayer, SeaLayer
+from juice.terrainlayer import TerrainLayer, RiverLayer, SeaLayer, BiomeLayer
 
 class Terrain:
 
@@ -22,13 +22,18 @@ class Terrain:
     SEA_THRESHOLD = 96
     MIN_SEA_SIZE = 32
     
-    RIVER_DENSITY = 0.05
+    RIVER_DENSITY = 0.025
     MIN_RIVER_SOURCES = 4
+    
+    DESERT_ID = 1
+    FOREST_ID = 2
+    BIOME_H_DELTA = 15
+    MIN_BIOME_SIZE = 32
     
     def __init__(self, dim, randseed=None):
         self.heightmap = Heightmap(
             dim, randseed=randseed,
-            min_cell_size=4, noise_range=35, blur_sigma=1.5
+            #min_cell_size=4, noise_range=35, blur_sigma=1.5
         )
         self.dim = dim
         
@@ -36,6 +41,18 @@ class Terrain:
         self._colormap = {}
         
         random.seed(randseed)
+
+    def generate(self, post_generate_cb=None):
+        self.heightmap.generate()
+
+        if (callable(post_generate_cb)):
+            post_generate_cb(self.heightmap)
+        
+        for layer in (self._layers):
+            layer.generate()
+            
+            if (callable(post_generate_cb)):
+                post_generate_cb(layer)
     
     def add_layer(self, layer):
         if (not isinstance(layer, (TerrainLayer,))):
@@ -59,18 +76,6 @@ class Terrain:
                 return layer
         
         raise LookupError("Layer of type " + str(ltype) + " not found") 
-    
-    def generate(self, post_generate_cb=None):
-        self.heightmap.generate()
-
-        if (callable(post_generate_cb)):
-            post_generate_cb(self.heightmap)
-        
-        for layer in (self._layers):
-            layer.generate()
-            
-            if (callable(post_generate_cb)):
-                post_generate_cb(layer)
         
     def get_imgdata(self, scaling=1):
         
@@ -126,13 +131,20 @@ class Terrain:
         
         """ Apply all TerrainLayers to the passed Image in order """
         
-        layer_types = (SeaLayer, RiverLayer)
+        layer_types = (SeaLayer, RiverLayer, BiomeLayer)
         layer_colorers = {}
         
-        #layer_colorers[SeaLayer] = (0, 0, 255)
-        layer_colorers[SeaLayer] = self._get_colormap_entry
-        layer_colorers[RiverLayer] = (0, 200, 0)
-        #layer_colorers[RiverLayer] = self._get_colormap_entry
+        def biome_colorer(val):
+            if (val == self.DESERT_ID):
+                return (230, 230, 0)
+            elif (val == self.FOREST_ID):
+                return (0, 125, 0)
+            raise ValueError("No such biome ID " + str(val))
+        
+        layer_colorers[SeaLayer] = (0, 0, 200)
+        #layer_colorers[SeaLayer] = self._get_colormap_entry
+        layer_colorers[RiverLayer] = (80, 80, 240)
+        layer_colorers[BiomeLayer] = biome_colorer
 
         for ltype in layer_types:
             layer = None

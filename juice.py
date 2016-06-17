@@ -11,7 +11,7 @@ import pyglet
 
 from juice.heightmap import Heightmap
 from juice.terrain import Terrain
-from juice.terrainlayer import TerrainLayer, RiverLayer, SeaLayer
+from juice.terrainlayer import TerrainLayer, RiverLayer, SeaLayer, BiomeLayer
 
 _g = {}
 
@@ -46,7 +46,7 @@ def parse_command_line():
 def main():
     GAME_WIDTH = 800
     GAME_HEIGHT = 600
-    TERRAIN_DIM = 64
+    TERRAIN_DIM = 2**7
     
     args = parse_command_line()
     randseed = args.random_seed \
@@ -60,6 +60,7 @@ def main():
     terr = Terrain(TERRAIN_DIM, randseed=randseed)
     terr.add_layer(SeaLayer(randseed=randseed))
     terr.add_layer(RiverLayer(randseed=randseed))
+    terr.add_layer(BiomeLayer(randseed=randseed))
     terr.generate(post_generate_cb=timed_print)
     
     if (args.timing):
