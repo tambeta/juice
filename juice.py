@@ -11,7 +11,8 @@ import pyglet
 
 from juice.heightmap import Heightmap
 from juice.terrain import Terrain
-from juice.terrainlayer import TerrainLayer, RiverLayer, SeaLayer, BiomeLayer
+from juice.terrainlayer import \
+    TerrainLayer, RiverLayer, SeaLayer, BiomeLayer, CityLayer
 
 _g = {}
 
@@ -61,6 +62,7 @@ def main():
     terr.add_layer(SeaLayer(randseed=randseed))
     terr.add_layer(RiverLayer(randseed=randseed))
     terr.add_layer(BiomeLayer(randseed=randseed))
+    terr.add_layer(CityLayer(randseed=randseed))
     terr.generate(post_generate_cb=timed_print)
     
     if (args.timing):

@@ -1,14 +1,18 @@
 
 import colorsys
+import functools
 import random
+
 from warnings import warn
 
 import numpy as np
 import pyglet
+
 from PIL import Image
 
 from juice.heightmap import Heightmap
-from juice.terrainlayer import TerrainLayer, RiverLayer, SeaLayer, BiomeLayer
+from juice.terrainlayer import \
+    TerrainLayer, RiverLayer, SeaLayer, BiomeLayer, CityLayer
 
 class Terrain:
 
@@ -30,10 +34,13 @@ class Terrain:
     BIOME_H_DELTA = 15
     MIN_BIOME_SIZE = 32
     
+    CITY_DENSITY = 0.01
+    MIN_POPSUPPORT_SIZE = 12
+    
     def __init__(self, dim, randseed=None):
         self.heightmap = Heightmap(
             dim, randseed=randseed,
-            #min_cell_size=4, noise_range=35, blur_sigma=1.5
+            #min_cell_size=4, noise_range=35, blur_sigma=0.8
         )
         self.dim = dim
         
@@ -131,7 +138,7 @@ class Terrain:
         
         """ Apply all TerrainLayers to the passed Image in order """
         
-        layer_types = (SeaLayer, RiverLayer, BiomeLayer)
+        layer_types = (SeaLayer, RiverLayer, BiomeLayer, CityLayer)
         layer_colorers = {}
         
         def biome_colorer(val):
@@ -141,10 +148,17 @@ class Terrain:
                 return (0, 125, 0)
             raise ValueError("No such biome ID " + str(val))
         
+        def heatmap_colorer(max_value, val):
+            
+            """ For use with functools.partial. """
+            
+            return (min(255, int(val / max_value * 255)), 0, 0)
+        
         layer_colorers[SeaLayer] = (0, 0, 200)
         #layer_colorers[SeaLayer] = self._get_colormap_entry
         layer_colorers[RiverLayer] = (80, 80, 240)
         layer_colorers[BiomeLayer] = biome_colorer
+        layer_colorers[CityLayer] = (255, 0, 0)
 
         for ltype in layer_types:
             layer = None

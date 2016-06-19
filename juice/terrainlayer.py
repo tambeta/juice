@@ -73,7 +73,9 @@ class TerrainLayer(metaclass=abc.ABCMeta):
     def _foreach_edge_neighbor(self, cb, x, y, *extra):
 
         """ Convenience routine to loop over all edge neigbors. Excludes invalid
-        coordinates. Callback can break by returning False.
+        coordinates. Callback can break by returning False, in which case the
+        method returns False. Upon completion of iterating over all neighbors,
+        returns True.
         """
 
         dim = self.terrain.dim
@@ -81,16 +83,50 @@ class TerrainLayer(metaclass=abc.ABCMeta):
         for (cx, cy) in ((x, y-1), (x+1, y), (x, y+1), (x-1, y)):
             if (cx >= 0 and cy >= 0 and cx < dim and cy < dim):
                 if (cb(cx, cy, *extra) == False):
-                    return
+                    return False
+        
+        return True
+                    
+    def _foreach_neighbor(self, cb, x, y, *extra):
+
+        """ Convenience routine to loop over all (edge and corner) neigbors. The
+        documentation for _foreach_edge_neighbor applies otherwise.
+        """
+
+        dim = self.terrain.dim
+
+        if (self._foreach_edge_neighbor(cb, x, y, *extra) == False):
+            return False
+        
+        # Loop over corner neighbors 
+        
+        for (cx, cy) in ((x+1, y-1), (x+1, y+1), (x-1, y+1), (x-1, y-1)):
+            if (cx >= 0 and cy >= 0 and cx < dim and cy < dim):
+                if (cb(cx, cy, *extra) == False):
+                    return False
+    
+        return True
     
     def _label_segments(self, min_size=0):
         
-        """ Label contiguous segments of the matrix and label these with
-        successive integers starting with 1. Optionally leave only segments with
-        size at least min_size. Returns original number of labels.
+        """ Object method variant of label_matrix_segments, operates on
+        self.matrix.
         """
         
-        labels = ndi.label(self.matrix)
+        (self.matrix, n_labels) = \
+            self.label_matrix_segments(self.matrix, min_size)
+        return n_labels
+        
+    @staticmethod
+    def label_matrix_segments(matrix, min_size=0):
+        
+        """ Static method. Label contiguous segments of a matrix and label these
+        with successive integers starting with 1. Optionally leave only segments
+        with size at least min_size. Returns a tuple (matrix, original number of
+        labels).
+        """
+        
+        labels = ndi.label(matrix)
         matrix = labels[0]
         n_labels = labels[1]
         
@@ -102,8 +138,7 @@ class TerrainLayer(metaclass=abc.ABCMeta):
                 if (n < min_size):
                     matrix[label_indices] = 0
                 
-        self.matrix = matrix
-        return n_labels
+        return (matrix, n_labels)
 
 class SeaLayer(TerrainLayer):
     def __init__(self, *args, **kwargs):
@@ -129,7 +164,10 @@ class RiverLayer(TerrainLayer):
 
     def generate(self):
 
-        """ Generate the river system based on terrain's heightmap. """
+        """ Generate the river system based on terrain's heightmap. Rivers flow
+        from mountains (highest locations on the heighmap) towards the sea.
+        Rivers that fail (e.g. run into itself) are removed.
+        """
 
         terrain = self.terrain
         mthr = terrain.MOUNTAIN_THRESHOLD
@@ -258,6 +296,12 @@ class BiomeLayer(TerrainLayer):
         self._require = (SeaLayer, RiverLayer)
 
     def generate(self):
+        
+        """ Biomes are generated based on the heightmap, allowed in intermediate
+        heights between sea and mountains. Contiguous biome segments are
+        assigned a random ID (desert or forest).
+        """
+        
         terrain = self.terrain
         hmatrix = terrain.heightmap.matrix
         smatrix = terrain.get_layer_by_type(SeaLayer).matrix
@@ -282,3 +326,79 @@ class BiomeLayer(TerrainLayer):
             np.logical_and(rmatrix == 0, smatrix == 0),
             self.matrix, 0
         )
+
+class CityLayer(TerrainLayer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)        
+        self._require = (SeaLayer, RiverLayer, BiomeLayer)
+
+    def generate(self):
+        
+        """ Generate city layer by assigning a score to each allowed land square
+        (e.g. by biome and proximity to water), then picking n_cities weighed by
+        score.
+        """
+        
+        terrain = self.terrain
+    
+        matrix = self._init_matrix()
+        hmatrix = terrain.heightmap.matrix
+        smatrix = terrain.get_layer_by_type(SeaLayer).matrix
+        rmatrix = terrain.get_layer_by_type(RiverLayer).matrix
+        bmatrix = terrain.get_layer_by_type(BiomeLayer).matrix
+        
+        landmatrix = self.label_matrix_segments(
+            np.where(smatrix == 0, 1, 0), terrain.MIN_POPSUPPORT_SIZE)[0]
+        landmatrix = \
+            np.where(np.logical_and(landmatrix != 0, rmatrix == 0), 1, 0)
+            
+        n_coords = len(np.nonzero(landmatrix)[0])
+        n_cities = int(n_coords * terrain.CITY_DENSITY)        
+        coord_i = 0
+        coords = []
+        score_vec = np.empty([n_coords])
+        coord_i_vec = np.arange(n_coords)
+        
+        def check_river_adjacency(x, y):
+            if (rmatrix[y, x] != 0):
+                return False
+                
+        def check_sea_adjacency(x, y):
+            if (smatrix[y, x] != 0):
+                return False
+        
+        it = np.nditer(matrix, flags=["multi_index"])
+        
+        while (not it.finished):
+            p = it.multi_index
+            x = p[1]; y = p[0]
+            score = 1
+            
+            if (landmatrix[y, x] == 0):
+                it.iternext()
+                continue
+                
+            if (self._foreach_neighbor(check_river_adjacency, x, y) == False):
+                score += 3
+            if (self._foreach_neighbor(check_sea_adjacency, x, y) == False):
+                score += 3
+            
+            if (bmatrix[y, x] == terrain.DESERT_ID):
+                score -= 0.75
+            elif (bmatrix[y, x] == terrain.FOREST_ID):
+                score -= 0.5
+            
+            score_vec[coord_i] = score
+            coords.append((x, y))
+            coord_i += 1            
+            it.iternext()
+        
+        assert(coord_i == n_coords == len(coords))
+        
+        score_vec /= np.sum(score_vec)
+        city_coord_is = \
+            np.random.choice(coord_i_vec, size=n_cities, p=score_vec)
+        
+        for i in np.nditer(city_coord_is):
+            p = coords[i]; x = p[0]; y = p[1]
+            self.matrix[p[1], p[0]] = 1

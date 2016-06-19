@@ -1,6 +1,7 @@
 
 import array
 import random
+
 from random import randint
 
 import numpy as np
