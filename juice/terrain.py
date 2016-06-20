@@ -18,7 +18,35 @@ class Terrain:
 
     """ Terrain is a compositor class consisting of an underlying Heightmap
     and several TerrainLayers. Note on threshold constants: the condition is
-    ruled to apply _at_ threshold as well as above or below.
+    ruled to apply _at_ threshold as well as above or below. Note on
+    nomenclature: "height" means self.heightmap.matrix value at a given
+    coordinate.
+    
+    Layer constants:
+    
+    MOUNTAIN_THRESHOLD       - Height at which or above a point is 
+                               considered to be a mountain, i.e. suitable 
+                               for a river source.
+    SEA_THRESHOLD            - Height at which or below a point is 
+                               considered to be suitable for sea.
+    MIN_SEA_SIZE             - Minimum size of a contiguous sea layer 
+                               segment.
+    RIVER_DENSITY            - Proportion of river sources to mountain 
+                               areas.
+    BIOME_H_DELTA            - A point is suitable for a biome if its 
+                               height is lte than 
+                               MOUNTAIN_THRESHOLD-BIOME_H_DELTA or gte than 
+                               SEA_THRESHOLD+BIOME_H_DELTA.
+    MIN_BIOME_SIZE           - Minimum size of contiguous biome layer 
+                               segment.
+    CITY_DENSITY             - Proportion of cities to land areas.
+    MIN_POPSUPPORT_SIZE      - Minimum size of contiguous land are to be 
+                               considered for city placement. 
+    CITY_CLOSENESS_FACTOR    - The map dimension is divided by this 
+                               constant to get the minimum distance between 
+                               any two cities.
+    MAX_CITY_DISALLOW_RADIUS - Maximum value for the minimum distance 
+                               between any two cities.
     """
     
     MOUNTAIN_THRESHOLD = 192
@@ -34,8 +62,10 @@ class Terrain:
     BIOME_H_DELTA = 15
     MIN_BIOME_SIZE = 32
     
-    CITY_DENSITY = 0.01
+    CITY_DENSITY = 0.01    
     MIN_POPSUPPORT_SIZE = 12
+    CITY_CLOSENESS_FACTOR = 20
+    MAX_CITY_DISALLOW_RADIUS = 40
     
     def __init__(self, dim, randseed=None):
         self.heightmap = Heightmap(
@@ -158,7 +188,8 @@ class Terrain:
         #layer_colorers[SeaLayer] = self._get_colormap_entry
         layer_colorers[RiverLayer] = (80, 80, 240)
         layer_colorers[BiomeLayer] = biome_colorer
-        layer_colorers[CityLayer] = (255, 0, 0)
+        #layer_colorers[CityLayer] = (255, 0, 0)
+        layer_colorers[CityLayer] = lambda x: (255, 0, 0) if (x == 1) else (0, 255, 0)
 
         for ltype in layer_types:
             layer = None

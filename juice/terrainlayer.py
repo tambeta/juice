@@ -1,5 +1,6 @@
 
 import abc
+import math
 import random
 
 import numpy as np
@@ -384,7 +385,7 @@ class CityLayer(TerrainLayer):
                 score += 3
             
             if (bmatrix[y, x] == terrain.DESERT_ID):
-                score -= 0.75
+                score -= 0.9
             elif (bmatrix[y, x] == terrain.FOREST_ID):
                 score -= 0.5
             
@@ -402,3 +403,48 @@ class CityLayer(TerrainLayer):
         for i in np.nditer(city_coord_is):
             p = coords[i]; x = p[0]; y = p[1]
             self.matrix[p[1], p[0]] = 1
+            
+        self._remove_close_cities()
+
+    def _remove_close_cities(self):
+        
+        """ After layer generation, iterate over cities pair-wise and remove one
+        in every pair whose distance is lower than a threshold.
+        """
+
+        matrix = self.matrix
+        terrain = self.terrain
+        coords = np.dstack(np.nonzero(self.matrix))[0]
+        d_threshold = min(
+            terrain.dim // terrain.CITY_CLOSENESS_FACTOR, 
+            terrain.MAX_CITY_DISALLOW_RADIUS
+        )
+        
+        def foreach_coord(coords, cb, *extra):
+            x = 0
+            y = 0
+            
+            for (i, c) in enumerate(np.nditer(coords, order="C")):
+                if (i % 2 == 0):
+                    y = c
+                else:
+                    x = c
+                    cb(x, y, *extra)
+        
+        def remove_close_dests(src_x, src_y, coords, matrix):
+            def check_and_remove(dst_x, dst_y):
+                if (src_x == dst_x and src_y == dst_y):
+                    return
+                elif (matrix[dst_y, dst_x] == 0 or matrix[src_y, src_x] == 0):
+                    return
+                elif (abs(src_x - dst_x) > d_threshold or abs(src_y - dst_y) > d_threshold):
+                    return
+                elif (math.sqrt((src_x - dst_x)**2 + (src_y - dst_y)**2) > d_threshold):
+                    return
+                    
+                matrix[dst_y, dst_x] = 0
+                
+            foreach_coord(coords, check_and_remove)
+        
+        foreach_coord(coords, remove_close_dests, coords, matrix)
+        self.matrix = matrix
