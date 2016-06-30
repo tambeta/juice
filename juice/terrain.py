@@ -184,12 +184,14 @@ class Terrain:
             
             return (min(255, int(val / max_value * 255)), 0, 0)
         
-        layer_colorers[SeaLayer] = (0, 0, 200)
-        #layer_colorers[SeaLayer] = self._get_colormap_entry
+        #layer_colorers[SeaLayer] = (0, 0, 200)
+        layer_colorers[SeaLayer] = \
+            lambda x: (255, 0, 0) if (x == 255) else (0, 0, 200)
         layer_colorers[RiverLayer] = (80, 80, 240)
         layer_colorers[BiomeLayer] = biome_colorer
         #layer_colorers[CityLayer] = (255, 0, 0)
-        layer_colorers[CityLayer] = lambda x: (255, 0, 0) if (x == 1) else (0, 255, 0)
+        layer_colorers[CityLayer] = \
+            lambda x: (255, 0, 0) if (x == 1) else (0, 255, 0)
 
         for ltype in layer_types:
             layer = None

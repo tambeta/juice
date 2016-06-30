@@ -17,7 +17,7 @@ from juice.terrainlayer import \
 
 GAME_WIDTH = 800
 GAME_HEIGHT = 600
-TERRAIN_DIM = 2**7
+TERRAIN_DIM = 2**6
 
 _g = {}
 
@@ -67,9 +67,9 @@ def generate(randseed=None):
     
     terr = Terrain(TERRAIN_DIM, randseed=randseed)
     terr.add_layer(SeaLayer(randseed=randseed))
-    terr.add_layer(RiverLayer(randseed=randseed))
-    terr.add_layer(BiomeLayer(randseed=randseed))
-    terr.add_layer(CityLayer(randseed=randseed))
+    #terr.add_layer(RiverLayer(randseed=randseed))
+    #terr.add_layer(BiomeLayer(randseed=randseed))
+    #terr.add_layer(CityLayer(randseed=randseed))
     terr.generate(post_generate_cb=timed_print)
     
     return terr 
