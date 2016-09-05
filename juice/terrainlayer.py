@@ -148,13 +148,7 @@ class SeaLayer(TerrainLayer):
     def generate(self):
 
         """ Generate the sea layer based on sea threshold. Disallow seas
-        (contiguous areas of water) below a fixed size. Normalize layer by
-        removing slivers of land that cannot be represented by a standard
-        tileset (assuming that land positions become beaches i.e. containing the
-        land to sea transition graphics). The points removed (i.e. turned into
-        sea) by normalization will have a value of 0xFF.
-        
-        TODO: only 2G, 3G, 8G tiles allowed. Also remove other G-rank tiles.
+        (contiguous areas of water) below a fixed size. 
         """
 
         terrain = self.terrain
@@ -163,58 +157,7 @@ class SeaLayer(TerrainLayer):
         self.matrix = \
             np.where(hmatrix <= terrain.SEA_THRESHOLD, 1, 0)
         self._label_segments(terrain.MIN_SEA_SIZE)
-        self._normalize()
         
-    def _normalize(self):
-        matrix = self.matrix
-        dim = self.terrain.dim
-        
-        npairs = (
-            ((0, -1), (0, 1)),
-            ((1, 0), (-1, 0)), 
-        )
-        
-        def normalize_point(x, y):
-            
-            # Turn a point to sea if any of its opposing edge neighbor
-            # pairs are both sea.
-            
-            for pair in npairs:
-                (p1x, p1y) = pair[0]
-                (p2x, p2y) = pair[1]
-                
-                p1x += x; p2x += x
-                p1y += y; p2y += y
-                
-                try:
-                    for i in (p1x, p2x, p1y, p2y):
-                        if (i < 0 or i >= dim):
-                            raise ValueError()
-                except ValueError:
-                    continue
-                
-                if (matrix[p1y, p1x] != 0 and matrix[p2y, p2x] != 0):
-                    matrix[y, x] = 255
-                    return True
-            return False
-        
-        def normalize():
-            
-            # Run a normalization pass, returning number of changed points.
-            
-            n = 0
-            
-            for x in range(dim):
-                for y in range(dim):
-                    if (matrix[y, x] == 0 and normalize_point(x, y)):
-                        n += 1
-            return n
-        
-        # Run normalization until no points changed.
-        
-        while (normalize() > 0):
-            pass
-
 class RiverLayer(TerrainLayer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
