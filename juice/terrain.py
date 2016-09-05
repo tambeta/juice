@@ -13,6 +13,7 @@ from PIL import Image
 from juice.heightmap import Heightmap
 from juice.terrainlayer import \
     TerrainLayer, RiverLayer, SeaLayer, BiomeLayer, CityLayer
+from juice.tileset import TileSet
 
 class Terrain:
 
@@ -67,6 +68,8 @@ class Terrain:
     CITY_CLOSENESS_FACTOR = 20
     MAX_CITY_DISALLOW_RADIUS = 40
     
+    LAYER_ORDER = (SeaLayer, RiverLayer, BiomeLayer, CityLayer)
+    
     def __init__(self, dim, randseed=None):
         self.heightmap = Heightmap(
             dim, randseed=randseed,
@@ -113,8 +116,25 @@ class Terrain:
                 return layer
         
         raise LookupError("Layer of type " + str(ltype) + " not found") 
+    
+    def get_layers(self):
         
-    def get_imgdata(self, scaling=1):
+        """ Get layers in order, warn if layer of expected type not found.
+        Generator method.
+        """
+        
+        for ltype in self.LAYER_ORDER:
+            layer = None
+            
+            try:
+                layer = self.get_layer_by_type(ltype)
+            except LookupError as e:
+                warn("Cannot get " + str(ltype.__name__) + " for composition")
+                continue
+                
+            yield layer
+        
+    def get_map_imgdata(self, scaling=1):
         
         """ Get the terrain as pyglet ImageData. """
         
@@ -140,6 +160,10 @@ class Terrain:
             dim, dim, "RGB",
             img.transpose(Image.FLIP_TOP_BOTTOM).tobytes()
         )
+    
+    def get_imgdata(self):                
+        tileset = TileSet("assets/img/tileset.png", 32)
+        return tileset.get_tile(0, 0)
     
     def _get_colormap_entry(self, key):
         
@@ -168,7 +192,6 @@ class Terrain:
         
         """ Apply all TerrainLayers to the passed Image in order """
         
-        layer_types = (SeaLayer, RiverLayer, BiomeLayer, CityLayer)
         layer_colorers = {}
         
         def biome_colorer(val):
@@ -184,33 +207,16 @@ class Terrain:
             
             return (min(255, int(val / max_value * 255)), 0, 0)
         
-        #layer_colorers[SeaLayer] = (0, 0, 200)
         layer_colorers[SeaLayer] = \
             lambda x: (255, 0, 0) if (x == 255) else (0, 0, 200)
         layer_colorers[RiverLayer] = (80, 80, 240)
         layer_colorers[BiomeLayer] = biome_colorer
-        #layer_colorers[CityLayer] = (255, 0, 0)
         layer_colorers[CityLayer] = \
             lambda x: (255, 0, 0) if (x == 1) else (0, 255, 0)
 
-        for ltype in layer_types:
-            layer = None
-            colorer = layer_colorers[ltype]
+        for layer in self.get_layers():
+            colorer = layer_colorers[type(layer)]
             
-            try:
-                layer = self.get_layer_by_type(ltype)
-            except LookupError as e:
-                warn("Cannot get " + str(ltype.__name__) + " for composition")
-                continue
-            
-            it = np.nditer(layer.matrix, flags=["multi_index"])
-            
-            while (not it.finished):
-                v = int(it[0])
-                
-                if (v > 0):                
-                    p = it.multi_index
-                    color = colorer(v) if callable(colorer) else colorer
-                    img.putpixel((p[1], p[0]), color)
-                
-                it.iternext()
+            for (x, y, v) in layer.get_all_points():                
+                color = colorer(v) if callable(colorer) else colorer
+                img.putpixel((x, y), color)

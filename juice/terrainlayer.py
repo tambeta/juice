@@ -40,6 +40,24 @@ class TerrainLayer(metaclass=abc.ABCMeta):
     def generate(self):
         pass
     
+    def get_all_points(self, skip_zero=True):
+        
+        """ A generator method to loop over all coordinates of a layer's
+        matrix. If skip_zero is true, only positions with a nonzero value are
+        returned.
+        """
+        
+        it = np.nditer(self.matrix, flags=["multi_index"])
+        
+        while (not it.finished):
+            v = int(it[0])
+            
+            if (not skip_zero or v > 0):
+                p = it.multi_index
+                yield (p[1], p[0], v)
+            
+            it.iternext()        
+    
     def _init_matrix(self):
 
         """ Init the matrix and return it. """

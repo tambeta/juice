@@ -48,6 +48,10 @@ def parse_command_line():
         help="Timing / profiling mode, exit after terrain generation"
     )
     parser.add_argument(
+        "-m", "--map", action="store_true",
+        help="Display overview map instead of entering the game"
+    )
+    parser.add_argument(
         "-s", "--save", type=str, help="Save a map to file")
     parser.add_argument(
         "-l", "--load", type=str, help="Load a saved map")
@@ -97,7 +101,10 @@ def main():
     if (args.timing):
         sys.exit(0)
 
-    img = terr.get_imgdata(scaling=scaling)
+    if (args.map):
+        img = terr.get_map_imgdata(scaling=scaling)
+    else:
+        img = terr.get_imgdata()
 
     @window.event
     def on_draw():
