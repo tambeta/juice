@@ -40,21 +40,27 @@ class TerrainLayer(metaclass=abc.ABCMeta):
     def generate(self):
         pass
     
-    def get_all_points(self, skip_zero=True):
+    def get_points(self, x=0, y=0, w=None, h=None, skip_zero=True):
         
-        """ A generator method to loop over all coordinates of a layer's
+        """ A generator method to loop over a subset of coordinates of a layer's
         matrix. If skip_zero is true, only positions with a nonzero value are
-        returned.
+        returned. If x, y (offsets of a rectangle), w, h (dimensions of a
+        rectangle) are not passed, yields all coordinates.
         """
         
-        it = np.nditer(self.matrix, flags=["multi_index"])
+        it = None
+        
+        if (not w and not h):
+            it = np.nditer(self.matrix, flags=["multi_index"])
+        else:
+            it = np.nditer(self.matrix[y:y+h, x:x+w], flags=["multi_index"])
         
         while (not it.finished):
             v = int(it[0])
             
             if (not skip_zero or v > 0):
                 p = it.multi_index
-                yield (p[1], p[0], v)
+                yield (x + p[1], y + p[0], v)
             
             it.iternext()        
     
