@@ -18,6 +18,7 @@ from juice.terrainlayer import \
 GAME_WIDTH = 800
 GAME_HEIGHT = 600
 TERRAIN_DIM = 2**6
+TILE_DIM = 32
 
 _g = {}
 
@@ -83,9 +84,14 @@ def main():
     randseed = args.random_seed \
         if args.random_seed \
         else random.randint(1, 10000)
+    
     scaling = min(GAME_WIDTH, GAME_HEIGHT) // TERRAIN_DIM
+    w_tiles = GAME_WIDTH // TILE_DIM
+    h_tiles = GAME_HEIGHT // TILE_DIM
+    
     window = pyglet.window.Window(GAME_WIDTH, GAME_HEIGHT)
     terr = None
+    display_img = None
 
     print("random seed:", randseed)
     print("scaling:", scaling)
@@ -102,14 +108,16 @@ def main():
         sys.exit(0)
 
     if (args.map):
-        img = terr.get_map_imgdata(scaling=scaling)
-    else:
-        img = terr.get_imgdata()
+        display_img = terr.get_map_imgdata(scaling=scaling)
 
     @window.event
     def on_draw():
         window.clear()
-        img.blit(0, 0)
+        
+        if (display_img):
+            display_img.blit(0, 0)
+        else:
+            terr.blit(0, 0, w_tiles, h_tiles, TILE_DIM)
 
     #window.push_handlers(pyglet.window.event.WindowEventLogger())
     pyglet.app.run()
