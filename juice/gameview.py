@@ -2,6 +2,7 @@
 import pyglet
 
 from juice.tileset import TileSet
+from juice.gamefieldlayer import GameFieldLayer
 from juice.terrainlayer import \
     TerrainLayer, RiverLayer, SeaLayer, BiomeLayer, CityLayer
 
@@ -11,16 +12,16 @@ class GameView:
     viewport.
     """
     
-    TILE_N = "TILE_N"
-    TILE_E = "TILE_E"
-    TILE_S = "TILE_S"
-    TILE_W = "TILE_W"
-    TILE_NE = "TILE_NE"
-    TILE_SE = "TILE_SE"
-    TILE_SW = "TILE_SW"
-    TILE_NW = "TILE_NW"
-    TILE_LAND = "TILE_LAND"
-    TILE_WATER = "TILE_WATER"
+    TILE_WATER  = 0
+    TILE_N      = 1
+    TILE_E      = 2
+    TILE_S      = 3
+    TILE_W      = 4
+    TILE_NE     = 5
+    TILE_SE     = 6
+    TILE_SW     = 7
+    TILE_NW     = 8
+    TILE_LAND   = 9
     
     def __init__(self, terrain, tiledim):
         self.terrain = terrain
@@ -37,6 +38,7 @@ class GameView:
         
         tiles = self.tiles
         tile_dim = self.tiledim
+        tilemap = self.tilemap
         
         screenbuf = pyglet.image.get_buffer_manager().get_color_buffer()
         screen_w = screenbuf.width
@@ -48,18 +50,21 @@ class GameView:
             xdelta = x - x_offset
             ydelta = y - y_offset
             blitx = xdelta * tile_dim
-            blity = screen_h - (tile_dim * (ydelta + 1))            
+            blity = screen_h - (tile_dim * (ydelta + 1))                        
+            tile_id = tilemap.matrix[y, x]
             
-            if (v > 0):
-                tiles[self.TILE_WATER].blit(blitx, blity)
-            else:
-                tiles[self.TILE_LAND].blit(blitx, blity)        
+            tiles[tile_id].blit(blitx, blity)
 
     def _construct_tilemap(self):
         
         """ Construct a tile map. """
         
-        # TODO: 
+        tilemap = GameFieldLayer(self.terrain.dim, self.TILE_LAND)
+        layer = self.terrain.get_layer_by_type(SeaLayer)
+        
+        for (x, y, v) in layer.get_points():
+            tilemap.matrix[y, x] = self.TILE_WATER
+        return tilemap
 
     def _gather_tiles(self):
         

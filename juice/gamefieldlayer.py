@@ -12,8 +12,8 @@ class GameFieldLayer:
     Notably subclassed by TerrainLayer.
     """
 
-    def __init__(self, dim):
-        self.matrix = np.zeros(np.shape(dim, dim), dtype=np.uint8)
+    def __init__(self, dim, fill=0):
+        self.matrix = np.full((dim, dim), fill, dtype=np.uint8)
 
     def get_points(self, x=0, y=0, w=None, h=None, skip_zero=True):
 
