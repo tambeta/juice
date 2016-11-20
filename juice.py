@@ -9,14 +9,15 @@ import sys
 import time
 
 import pyglet
+import pyglet.window.key as key
 
 from juice.heightmap import Heightmap
 from juice.terrain import Terrain
 from juice.terrainlayer import \
     TerrainLayer, RiverLayer, SeaLayer, BiomeLayer, CityLayer
 
-GAME_WIDTH = 800
-GAME_HEIGHT = 600
+GAME_WIDTH = 832
+GAME_HEIGHT = 640
 TERRAIN_DIM = 2**6
 TILE_DIM = 32
 
@@ -92,7 +93,10 @@ def main():
     window = pyglet.window.Window(GAME_WIDTH, GAME_HEIGHT)
     terr = None
     display_img = None
-
+    
+    viewport_x = 0
+    viewport_y = 0
+    
     print("random seed:", randseed)
     print("scaling:", scaling)
 
@@ -110,6 +114,19 @@ def main():
     if (args.map):
         display_img = terr.get_map_imgdata(scaling=scaling)
 
+    def constrain_vpcoords(x, y):
+        dim = terr.dim
+        max_x = dim - w_tiles
+        max_y = dim - h_tiles
+        
+        if (x < 0): x = 0
+        elif (x > max_x): x = max_x
+        
+        if (y < 0): y = 0
+        elif (y > max_y): y = max_y
+            
+        return (x, y)
+
     @window.event
     def on_draw():
         window.clear()
@@ -117,7 +134,23 @@ def main():
         if (display_img):
             display_img.blit(0, 0)
         else:
-            terr.blit(0, 0, w_tiles, h_tiles, TILE_DIM)
+            terr.blit(viewport_x, viewport_y, w_tiles, h_tiles, TILE_DIM)
+    
+    @window.event
+    def on_text_motion(motion):
+        nonlocal viewport_x
+        nonlocal viewport_y
+        
+        if (motion == key.MOTION_UP):
+            viewport_y -= 1
+        elif (motion == key.MOTION_DOWN):
+            viewport_y += 1
+        elif (motion == key.MOTION_LEFT):
+            viewport_x -= 1
+        elif (motion == key.MOTION_RIGHT):
+            viewport_x += 1
+            
+        (viewport_x, viewport_y) = constrain_vpcoords(viewport_x, viewport_y)
 
     #window.push_handlers(pyglet.window.event.WindowEventLogger())
     pyglet.app.run()
