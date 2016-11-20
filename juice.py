@@ -116,7 +116,7 @@ def main():
     if (args.map):
         display_img = terr.get_map_imgdata(scaling=scaling)
 
-    view = GameView(terr)
+    view = GameView(terr, TILE_DIM)
 
     def constrain_vpcoords(x, y):
         dim = terr.dim
@@ -138,7 +138,7 @@ def main():
         if (display_img):
             display_img.blit(0, 0)
         else:
-            view.blit(viewport_x, viewport_y, w_tiles, h_tiles, TILE_DIM)
+            view.blit(viewport_x, viewport_y, w_tiles, h_tiles)
     
     @window.event
     def on_text_motion(motion):
