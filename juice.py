@@ -15,6 +15,7 @@ from juice.heightmap import Heightmap
 from juice.terrain import Terrain
 from juice.terrainlayer import \
     TerrainLayer, RiverLayer, SeaLayer, BiomeLayer, CityLayer
+from juice.gameview import GameView
 
 GAME_WIDTH = 832
 GAME_HEIGHT = 640
@@ -92,6 +93,7 @@ def main():
     
     window = pyglet.window.Window(GAME_WIDTH, GAME_HEIGHT)
     terr = None
+    view = None
     display_img = None
     
     viewport_x = 0
@@ -107,12 +109,14 @@ def main():
     else:
         print("Loading map from `{}`".format(args.load))
         terr = load_state(args.load)
-
+    
     if (args.timing):
         sys.exit(0)
 
     if (args.map):
         display_img = terr.get_map_imgdata(scaling=scaling)
+
+    view = GameView(terr)
 
     def constrain_vpcoords(x, y):
         dim = terr.dim
@@ -134,7 +138,7 @@ def main():
         if (display_img):
             display_img.blit(0, 0)
         else:
-            terr.blit(viewport_x, viewport_y, w_tiles, h_tiles, TILE_DIM)
+            view.blit(viewport_x, viewport_y, w_tiles, h_tiles, TILE_DIM)
     
     @window.event
     def on_text_motion(motion):
