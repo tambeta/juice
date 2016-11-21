@@ -87,6 +87,42 @@ class SeaLayer(TerrainLayer):
         self.matrix = \
             np.where(hmatrix <= terrain.SEA_THRESHOLD, 1, 0)
         self._label_segments(terrain.MIN_SEA_SIZE)
+        self._normalize()
+        
+    def _normalize(self):
+        
+        """ Normalize for standard tileset. Remove land slivers that cannot be
+        displayed. Run several passes until complete.
+        """
+        
+        m = self.matrix
+        n_removed = 0
+        
+        for (x, y, v) in self.get_points(skip_zero=False):
+            if (v > 0):
+                continue
+            
+            x_axis_water = 0
+            y_axis_water = 0
+            
+            def tally_slivers(cx, cy):
+                nonlocal x_axis_water, y_axis_water
+                
+                if (abs(cx - x) == 1 and m[cy, cx] != 0):
+                    x_axis_water += 1
+                elif (abs(cy - y) == 1 and m[cy, cx] != 0):
+                    y_axis_water += 1
+            
+            self._foreach_edge_neighbor(tally_slivers, x, y)
+            
+            if (x_axis_water >= 2 or y_axis_water >=2):
+                n_removed += 1
+                m[y, x] = 0xFE
+        
+        print("Normalize pass: {} tiles removed".format(n_removed))
+        
+        if (n_removed > 0):
+            self._normalize()
         
 class RiverLayer(TerrainLayer):
     def __init__(self, *args, **kwargs):
