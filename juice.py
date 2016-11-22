@@ -16,10 +16,11 @@ from juice.terrain import Terrain
 from juice.terrainlayer import \
     TerrainLayer, RiverLayer, SeaLayer, BiomeLayer, CityLayer
 from juice.gameview import GameView
+from juice.tileclassifier import TileClassifier
 
 GAME_WIDTH = 832
 GAME_HEIGHT = 640
-TERRAIN_DIM = 2**6
+TERRAIN_DIM = 2**5
 TILE_DIM = 32
 
 _g = {}
@@ -76,7 +77,7 @@ def generate(randseed=None):
     terr.add_layer(SeaLayer(randseed=randseed))
     terr.add_layer(RiverLayer(randseed=randseed))
     terr.add_layer(BiomeLayer(randseed=randseed))
-    terr.add_layer(CityLayer(randseed=randseed))
+    #terr.add_layer(CityLayer(randseed=randseed))
     terr.generate(post_generate_cb=timed_print)
 
     return terr
