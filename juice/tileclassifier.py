@@ -1,6 +1,4 @@
 
-import sys
-
 import numpy as np
 
 class TileClassifier:
@@ -38,64 +36,13 @@ class TileClassifier:
 
     def normalize(self):
 
-        """ Normalize the GameFieldLayer, i.e. remove all illegal tiles. """
+        """ Normalize the GameFieldLayer, i.e. remove all illegal tiles. Remove
+        slivers first, then mark any tiles representable with the standard tile
+        set. Repeat until convergence.
+        """
 
         m = self.bool_matrix
         dim = self.dim
-
-        def rotate_matrix(m):
-            return np.fliplr(np.transpose(m))
-
-        def is_ternary_matrix_equal(a, b):
-
-            """ Compare two ternary matrices for equality. None values are
-            considered equal to any value.
-            """
-
-            ai = a.flat
-            bi = b.flat
-            equal = True
-
-            try:
-                while(True):
-                    av = next(ai)
-                    bv = next(bi)
-
-                    if (av == None or bv == None):
-                        continue
-                    elif (av != bv):
-                        equal = False
-                        break
-            except StopIteration:
-                pass
-
-            return equal
-
-        def classify_tile(m, mask, x, y, tilespec):
-
-            """ Classify a single tile. tilespec may be a valid ternary matrix which
-            is rotated into all possible positions and compared with the tile's
-            immediate neighborhood _or_ a callable.
-            """
-
-            nhood = m[y-1:y+2, x-1:x+2]
-            i = 4                       # rotate 4 times
-
-            if (not mask[y-1, x-1]):    # already classed as OK, return
-                return False
-            elif (not m[y, x]):         # non-interesting tile is OK, return
-                return False
-            elif (nhood.all() == True): # interior terrain tile is OK, return
-                return False
-
-            if (callable(tilespec)):
-                return tilespec(m, x, y, nhood)
-
-            while (i > 0):
-                if (is_ternary_matrix_equal(tilespec, nhood)):
-                    return False
-                tilespec = rotate_matrix(tilespec)
-                i -= 1
 
         def sliver_spec(m, x, y, nhood):
 
@@ -107,51 +54,101 @@ class TileClassifier:
                 return True
             return False
 
-        def extend_matrix(m):
-
-            """ Expand a tile matrix over the borders by one: all values are
-            continued further, i.e. terrain continues to terrain and non-terrain
-            continues to non-terrain. The result is a matrix with 2 added to both
-            dimensions.
-            """
-
-            m = np.vstack((m[0], m))
-            m = np.vstack((m, m[-1]))
-            m = np.hstack((np.expand_dims(m[:,0], axis=1), m))
-            m = np.hstack((m, np.expand_dims(m[:,-1], axis=1)))
-
-            return m
-
-        def apply_tilespecs(m, *tilespecs):
-
-            """ Apply a list of tilespecs, i.e. remove illegal tiles. """
-
-            ext_m = extend_matrix(m)
-            mask = np.full((dim, dim), True, dtype=bool)
-
-            for tilespec in (tilespecs):
-                for x in range(1, dim+1):
-                    for y in range(1, dim+1):
-                        cls = classify_tile(ext_m, mask, x, y, tilespec)
-                        if (cls is not None): mask[y-1, x-1] = cls
-
-            m[mask] = False
-            self.flayer.matrix[mask] = 0xFF
-            #self.flayer.matrix[np.invert(mask)] = 0xFF
-            #self.flayer.matrix[mask] = 1 # TODO: dependent on rev
-
-            return np.count_nonzero(mask)
-
-        # Remove slivers first, then mark any tiles representable with the
-        # standard tile set. Repeat until convergence.
-
         while (True):
             n = 0
-            n += apply_tilespecs(m, sliver_spec)
-            n += apply_tilespecs(m, self.TT_CONCAVE, self.TT_CONVEX, self.TT_STRAIGHT)
-
-            print("Masked {} tiles".format(n))
+            n += self._apply_tilespecs(m, sliver_spec)
+            n += self._apply_tilespecs(m, self.TT_CONCAVE, self.TT_CONVEX, self.TT_STRAIGHT)
 
             if (n <= 0):
                 break
+
+    def _apply_tilespecs(self, m, *tilespecs):
+
+        """ Apply a list of tilespecs, i.e. remove illegal tiles. """
+        
+        dim = self.dim
+        ext_m = self._extend_matrix(m)
+        mask = np.full((dim, dim), True, dtype=bool)
+
+        for tilespec in (tilespecs):
+            for x in range(1, dim+1):
+                for y in range(1, dim+1):
+                    cls = self._classify_tile(ext_m, mask, x, y, tilespec)
+                    if (cls is not None): mask[y-1, x-1] = cls
+
+        m[mask] = False
+        self.flayer.matrix[mask] = 0xFF
+        #self.flayer.matrix[np.invert(mask)] = 0xFF
+        #self.flayer.matrix[mask] = 1 # TODO: dependent on rev
+
+        return np.count_nonzero(mask)
+
+    def _classify_tile(self, m, mask, x, y, tilespec):
+
+        """ Classify a single tile. tilespec may be a valid ternary matrix which
+        is rotated into all possible positions and compared with the tile's
+        immediate neighborhood _or_ a callable.
+        """
+
+        nhood = m[y-1:y+2, x-1:x+2]
+        i = 4                       # rotate 4 times
+
+        if (not mask[y-1, x-1]):    # already classed as OK, return
+            return False
+        elif (not m[y, x]):         # non-interesting tile is OK, return
+            return False
+        elif (nhood.all() == True): # interior terrain tile is OK, return
+            return False
+
+        if (callable(tilespec)):
+            return tilespec(m, x, y, nhood)
+
+        while (i > 0):
+            if (self._is_ternary_matrix_equal(tilespec, nhood)):
+                return False
+            tilespec = self._rotate_matrix(tilespec)
+            i -= 1
+
+    def _rotate_matrix(self, m):
+        return np.fliplr(np.transpose(m))
+
+    def _is_ternary_matrix_equal(self, a, b):
+
+        """ Compare two ternary matrices for equality. None values are
+        considered equal to any value.
+        """
+
+        ai = a.flat
+        bi = b.flat
+        equal = True
+
+        try:
+            while(True):
+                av = next(ai)
+                bv = next(bi)
+
+                if (av == None or bv == None):
+                    continue
+                elif (av != bv):
+                    equal = False
+                    break
+        except StopIteration:
+            pass
+
+        return equal
+
+    def _extend_matrix(self, m):
+
+        """ Expand a tile matrix over the borders by one: all values are
+        continued further, i.e. terrain continues to terrain and non-terrain
+        continues to non-terrain. The result is a matrix with 2 added to both
+        dimensions.
+        """
+
+        m = np.vstack((m[0], m))
+        m = np.vstack((m, m[-1]))
+        m = np.hstack((np.expand_dims(m[:,0], axis=1), m))
+        m = np.hstack((m, np.expand_dims(m[:,-1], axis=1)))
+
+        return m
 

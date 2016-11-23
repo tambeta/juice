@@ -21,7 +21,7 @@ from juice.tileclassifier import TileClassifier
 
 GAME_WIDTH = 832
 GAME_HEIGHT = 640
-TERRAIN_DIM = 2**5
+TERRAIN_DIM = 2**6
 TILE_DIM = 32
 
 _g = {}
