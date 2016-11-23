@@ -4,10 +4,16 @@ import sys
 import numpy as np
 
 class TileClassifier:
+
+    """ A class for converting a GameFieldLayer into the space of possible
+    tiles of the standard tileset and removing illegal tiles, thereby
+    normalizing the field.
+    """
+
     TT_CONCAVE  = np.array([
         [False, True, True],
         [True, True, True],
-        [True, True, True]])   
+        [True, True, True]])
     TT_CONVEX   = np.array([
         [None, False, None],
         [False, True, True],
@@ -16,97 +22,45 @@ class TileClassifier:
         [None, False, None],
         [True, True, True],
         [True, True, True]])
-    
-    def __init__(self):
-        pass
-        
-        #print(tt_concave, "\n", tt_concave.dtype)
 
-    def _remove_slivers(self, flayer, m):
-        
-        """ First normalization pass: remove "slivers", i.e. width 1 terrain
-        portions.
+    def __init__(self, flayer, rev=False):
+
+        """ Constructor. bool_matrix is a boolean matrix representing
+        "interesting" (the terrain) and "uninteresting" tiles. By default, all
+        nonzero values are considered interesting. Passing true for rev reverses
+        this condition.
         """
-        
-        it = np.nditer(m, flags=["multi_index"])
-        
-        while (not it.finished):
-            v = int(it[0])
-            p = it.multi_index
-            x = p[1]
-            y = p[0]
-            #yield (x + p[1], y + p[0], v)
 
-            x_axis_empty = 0
-            y_axis_empty = 0
+        self.flayer = flayer
+        self.bool_matrix = (flayer.matrix == 0 if rev
+            else flayer.matrix != 0)
+        self.dim = flayer.matrix.shape[0]
 
-            def tally_slivers(cx, cy):
-                nonlocal x_axis_empty, y_axis_empty
-                
-                if (abs(cx - x) == 1 and not m[cy, cx]):
-                    x_axis_empty += 1
-                elif (abs(cy - y) == 1 and not m[cy, cx]):
-                    y_axis_empty += 1
-            
-            self._foreach_edge_neighbor(tally_slivers, x, y)
-            
-            if (x_axis_empty >= 2 or y_axis_empty >=2):
-                n_removed += 1
-                m[y, x] = False
+    def normalize(self):
 
-            it.iternext()        
-        
-        print("Sliver removal: {}".format(n_removed))
-        
-        #for (x, y, v) in self.get_points(skip_zero=False):
-        #    if (v > 0):
-        #        continue
-        #    
-        #    x_axis_water = 0
-        #    y_axis_water = 0
-        #    
-        #    def tally_slivers(cx, cy):
-        #        nonlocal x_axis_water, y_axis_water
-        #        
-        #        if (abs(cx - x) == 1 and m[cy, cx] != 0):
-        #            x_axis_water += 1
-        #        elif (abs(cy - y) == 1 and m[cy, cx] != 0):
-        #            y_axis_water += 1
-        #    
-        #    self._foreach_edge_neighbor(tally_slivers, x, y)
-        #    
-        #    if (x_axis_water >= 2 or y_axis_water >=2):
-        #        n_removed += 1
-        #        m[y, x] = 0xFE
-        #
-        #print("Normalize pass: {} tiles removed".format(n_removed))
-        #
-        #if (n_removed > 0):
-        #    self._normalize()        
-    
-    def normalize(self, flayer):
-        
-        """ Normalize a GameFieldLayer. """
+        """ Normalize the GameFieldLayer, i.e. remove all illegal tiles. """
 
-        orig_m = flayer.matrix
-        m = flayer.matrix == 0
-        dim = m.shape[0]        
-        
-        #self._remove_slivers(flayer, m)
-        
+        m = self.bool_matrix
+        dim = self.dim
+
         def rotate_matrix(m):
-            return np.fliplr(np.transpose(m))        
-            
-        def compare_ternary_matrices(a, b):
+            return np.fliplr(np.transpose(m))
+
+        def is_ternary_matrix_equal(a, b):
+
+            """ Compare two ternary matrices for equality. None values are
+            considered equal to any value.
+            """
+
             ai = a.flat
             bi = b.flat
             equal = True
-            
+
             try:
                 while(True):
                     av = next(ai)
                     bv = next(bi)
-                    
+
                     if (av == None or bv == None):
                         continue
                     elif (av != bv):
@@ -114,32 +68,90 @@ class TileClassifier:
                         break
             except StopIteration:
                 pass
-            
+
             return equal
 
-        def classify_tile(x, y, tilespec):
+        def classify_tile(m, mask, x, y, tilespec):
+
+            """ Classify a single tile. tilespec may be a valid ternary matrix which
+            is rotated into all possible positions and compared with the tile's
+            immediate neighborhood _or_ a callable.
+            """
+
             nhood = m[y-1:y+2, x-1:x+2]
-            i = 4 # rotate 4 times
-            
+            i = 4                       # rotate 4 times
+
+            if (not mask[y-1, x-1]):    # already classed as OK, return
+                return False
+            elif (not m[y, x]):         # non-interesting tile is OK, return
+                return False
+            elif (nhood.all() == True): # interior terrain tile is OK, return
+                return False
+
+            if (callable(tilespec)):
+                return tilespec(m, x, y, nhood)
+
             while (i > 0):
-                if (compare_ternary_matrices(tilespec, nhood)):
-                    orig_m[y-1, x-1] = 0xFF
-                    break
+                if (is_ternary_matrix_equal(tilespec, nhood)):
+                    return False
                 tilespec = rotate_matrix(tilespec)
                 i -= 1
-        
-        # Expand matrix over the borders
-        
-        m = np.vstack((m[0], m))
-        m = np.vstack((m, m[-1]))
-        m = np.hstack((np.expand_dims(m[:,0], axis=1), m))
-        m = np.hstack((m, np.expand_dims(m[:,-1], axis=1)))
-        
-        # Classify tiles of matrix
-       
-        for tilespec in (self.TT_CONCAVE, self.TT_CONVEX, self.TT_STRAIGHT):
-        #for tilespec in (self.TT_CONCAVE):
-            for x in range(1, dim):
-                for y in range(1, dim):
-                    classify_tile(x, y, tilespec)
-        
+
+        def sliver_spec(m, x, y, nhood):
+
+            """ Callable tilespec defining "slivers" i.e. terrain portions of
+            width 1.
+            """
+
+            if ((not nhood[0, 1] and not nhood[2, 1]) or (not nhood[1, 0] and not nhood[1, 2])):
+                return True
+            return False
+
+        def extend_matrix(m):
+
+            """ Expand a tile matrix over the borders by one: all values are
+            continued further, i.e. terrain continues to terrain and non-terrain
+            continues to non-terrain. The result is a matrix with 2 added to both
+            dimensions.
+            """
+
+            m = np.vstack((m[0], m))
+            m = np.vstack((m, m[-1]))
+            m = np.hstack((np.expand_dims(m[:,0], axis=1), m))
+            m = np.hstack((m, np.expand_dims(m[:,-1], axis=1)))
+
+            return m
+
+        def apply_tilespecs(m, *tilespecs):
+
+            """ Apply a list of tilespecs, i.e. remove illegal tiles. """
+
+            ext_m = extend_matrix(m)
+            mask = np.full((dim, dim), True, dtype=bool)
+
+            for tilespec in (tilespecs):
+                for x in range(1, dim+1):
+                    for y in range(1, dim+1):
+                        cls = classify_tile(ext_m, mask, x, y, tilespec)
+                        if (cls is not None): mask[y-1, x-1] = cls
+
+            m[mask] = False
+            self.flayer.matrix[mask] = 0xFF
+            #self.flayer.matrix[np.invert(mask)] = 0xFF
+            #self.flayer.matrix[mask] = 1 # TODO: dependent on rev
+
+            return np.count_nonzero(mask)
+
+        # Remove slivers first, then mark any tiles representable with the
+        # standard tile set. Repeat until convergence.
+
+        while (True):
+            n = 0
+            n += apply_tilespecs(m, sliver_spec)
+            n += apply_tilespecs(m, self.TT_CONCAVE, self.TT_CONVEX, self.TT_STRAIGHT)
+
+            print("Masked {} tiles".format(n))
+
+            if (n <= 0):
+                break
+

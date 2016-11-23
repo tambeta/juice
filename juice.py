@@ -8,6 +8,7 @@ import random
 import sys
 import time
 
+import numpy as np
 import pyglet
 import pyglet.window.key as key
 
@@ -100,6 +101,7 @@ def main():
     viewport_x = 0
     viewport_y = 0
     
+    np.set_printoptions(threshold=10)
     print("random seed:", randseed)
     print("scaling:", scaling)
 

@@ -84,12 +84,11 @@ class SeaLayer(TerrainLayer):
 
         terrain = self.terrain
         hmatrix = terrain.heightmap.matrix
-        tc = TileClassifier()
 
         self.matrix = \
             np.where(hmatrix <= terrain.SEA_THRESHOLD, 1, 0)
         self._label_segments(terrain.MIN_SEA_SIZE)
-        tc.normalize(self)
+        TileClassifier(self, rev=True).normalize()
 
 class RiverLayer(TerrainLayer):
     def __init__(self, *args, **kwargs):
