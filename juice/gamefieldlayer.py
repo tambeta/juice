@@ -39,15 +39,15 @@ class GameFieldLayer:
 
             it.iternext()
 
-    def _foreach_neighbor(self, cb, x, y, *extra):
+    def foreach_neighbor(self, cb, x, y, *extra):
 
         """ Convenience routine to loop over all (edge and corner) neigbors. The
-        documentation for _foreach_edge_neighbor applies otherwise.
+        documentation for foreach_edge_neighbor applies otherwise.
         """
 
         dim = self.terrain.dim
 
-        if (self._foreach_edge_neighbor(cb, x, y, *extra) == False):
+        if (self.foreach_edge_neighbor(cb, x, y, *extra) == False):
             return False
 
         # Loop over corner neighbors
@@ -59,7 +59,7 @@ class GameFieldLayer:
 
         return True
 
-    def _foreach_edge_neighbor(self, cb, x, y, *extra):
+    def foreach_edge_neighbor(self, cb, x, y, *extra):
 
         """ Convenience routine to loop over all edge neigbors. Excludes invalid
         coordinates. Callback can break by returning False, in which case the
@@ -76,7 +76,7 @@ class GameFieldLayer:
 
         return True
 
-    def _label_segments(self, min_size=0):
+    def label_segments(self, min_size=0):
 
         """ Object method variant of label_matrix_segments, operates on
         self.matrix.

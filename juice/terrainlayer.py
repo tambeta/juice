@@ -71,11 +71,31 @@ class TerrainLayer(GameFieldLayer, metaclass=abc.ABCMeta):
         except Exception as e:
             self.matrix = None
             raise e
+    
+    def normalized(fn):
+        
+        """ Decorator for generate methods. Applies normalization after
+        generation. Object's normalize_rev attribute controls TileClassifier's
+        rev option.
+        """
+        
+        def wrapped(tlayer):
+            try:
+                rev = tlayer.normalize_rev
+            except AttributeError:
+                rev = False
+            
+            fn(tlayer)
+            TileClassifier(tlayer, rev=rev).normalize()
+        
+        return wrapped
 
 class SeaLayer(TerrainLayer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
+        self.normalize_rev = True
+    
+    @TerrainLayer.normalized
     def generate(self):
 
         """ Generate the sea layer based on sea threshold. Disallow seas
@@ -87,8 +107,7 @@ class SeaLayer(TerrainLayer):
 
         self.matrix = \
             np.where(hmatrix <= terrain.SEA_THRESHOLD, 1, 0)
-        self._label_segments(terrain.MIN_SEA_SIZE)
-        TileClassifier(self, rev=True).normalize()
+        self.label_segments(terrain.MIN_SEA_SIZE)
 
 class RiverLayer(TerrainLayer):
     def __init__(self, *args, **kwargs):
@@ -167,7 +186,7 @@ class RiverLayer(TerrainLayer):
             # and use the lowest suitable neighbor point for continuing. Delete river
             # and fail if no suitabe neighbors.
 
-            self._foreach_edge_neighbor(
+            self.foreach_edge_neighbor(
                 self._confirm_square_ok, x, y, river_id, ok_neighbors, 1, True)
             random.shuffle(ok_neighbors)
             ok_neighbors.sort(key=lambda p: hmatrix[p[1], p[0]])
@@ -204,7 +223,7 @@ class RiverLayer(TerrainLayer):
             if (not predicate(x, y)):
                 n_river_nbrs += 1
 
-        self._foreach_edge_neighbor(confirm_nbrs_not_river, x, y)
+        self.foreach_edge_neighbor(confirm_nbrs_not_river, x, y)
 
         if (predicate(x, y) and n_river_nbrs <= neigh_rivers_threshold): #*
             ok_neighbors.append((x, y))
@@ -220,7 +239,7 @@ class RiverLayer(TerrainLayer):
                 is_converging = True
                 return False
 
-        self._foreach_edge_neighbor(have_other_river_nbrs, x, y)
+        self.foreach_edge_neighbor(have_other_river_nbrs, x, y)
         return is_converging
 
 class BiomeLayer(TerrainLayer):
@@ -246,7 +265,7 @@ class BiomeLayer(TerrainLayer):
             hmatrix < terrain.MOUNTAIN_THRESHOLD - terrain.BIOME_H_DELTA
         ), 1, 0)
         n_segments = \
-            self._label_segments(terrain.MIN_BIOME_SIZE)        
+            self.label_segments(terrain.MIN_BIOME_SIZE)        
         
         for segment_id in range(1, n_segments + 1):
             segment_size = len(np.where(self.matrix == segment_id)[0])
@@ -311,9 +330,9 @@ class CityLayer(TerrainLayer):
                 it.iternext()
                 continue
                 
-            if (self._foreach_neighbor(check_river_adjacency, x, y) == False):
+            if (self.foreach_neighbor(check_river_adjacency, x, y) == False):
                 score += 3
-            if (self._foreach_neighbor(check_sea_adjacency, x, y) == False):
+            if (self.foreach_neighbor(check_sea_adjacency, x, y) == False):
                 score += 3
             
             if (bmatrix[y, x] == terrain.DESERT_ID):

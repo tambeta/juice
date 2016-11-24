@@ -33,6 +33,7 @@ class TileClassifier:
         self.bool_matrix = (flayer.matrix == 0 if rev
             else flayer.matrix != 0)
         self.dim = flayer.matrix.shape[0]
+        self.rev = rev
 
     def normalize(self):
 
@@ -77,9 +78,7 @@ class TileClassifier:
                     if (cls is not None): mask[y-1, x-1] = cls
 
         m[mask] = False
-        self.flayer.matrix[mask] = 0xFF
-        #self.flayer.matrix[np.invert(mask)] = 0xFF
-        #self.flayer.matrix[mask] = 1 # TODO: dependent on rev
+        self.flayer.matrix[mask] = (0xFE if self.rev else 0)
 
         return np.count_nonzero(mask)
 
