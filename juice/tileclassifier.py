@@ -8,32 +8,54 @@ class TileClassifier:
     normalizing the field.
     """
 
-    TT_CONCAVE  = np.array([
+    TS_CONCAVE  = np.array([
         [False, True, True],
         [True, True, True],
         [True, True, True]])
-    TT_CONVEX   = np.array([
+    TS_CONVEX   = np.array([
         [None, False, None],
         [False, True, True],
         [None, True, True]])
-    TT_STRAIGHT   = np.array([
+    TS_STRAIGHT   = np.array([
         [None, False, None],
         [True, True, True],
         [True, True, True]])
 
+    TT_EMPTY = 0
+    TT_NA = 1
+
+    TT_CONCAVE_SE   = 11
+    TT_CONCAVE_SW   = 12
+    TT_CONCAVE_NW   = 13
+    TT_CONCAVE_NE   = 14
+
+    TT_CONVEX_NE    = 15
+    TT_CONVEX_SE    = 16
+    TT_CONVEX_SW    = 17
+    TT_CONVEX_NW    = 18
+
+    TT_STRAIGHT_N   = 19
+    TT_STRAIGHT_E   = 20
+    TT_STRAIGHT_S   = 21
+    TT_STRAIGHT_W   = 22
+
     def __init__(self, flayer, rev=False):
 
-        """ Constructor. bool_matrix is a boolean matrix representing
-        "interesting" (the terrain) and "uninteresting" tiles. By default, all
-        nonzero values are considered interesting. Passing true for rev reverses
-        this condition.
+        """ Constructor. cls_matrix is a matrix representing "interesting" (the
+        terrain) and "uninteresting" tiles at first (a boolean matrix), later
+        filled with tile type IDs. By default, all nonzero values are considered
+        interesting. Passing true for rev reverses this condition.
         """
 
-        self.flayer = flayer
-        self.bool_matrix = (flayer.matrix == 0 if rev
-            else flayer.matrix != 0)
-        self.dim = flayer.matrix.shape[0]
-        self.rev = rev
+        assert(self.TT_EMPTY == 0)
+
+        cm = np.full(flayer.matrix.shape, self.TT_EMPTY, dtype=np.uint8)
+        cm[flayer.matrix == 0 if rev else flayer.matrix != 0] = self.TT_NA
+
+        self._cls_matrix = cm
+        self._flayer = flayer
+        self._dim = flayer.matrix.shape[0]
+        self._rev = rev
 
     def normalize(self):
 
@@ -42,8 +64,8 @@ class TileClassifier:
         set. Repeat until convergence.
         """
 
-        m = self.bool_matrix
-        dim = self.dim
+        m = self._cls_matrix
+        dim = self._dim
 
         def sliver_spec(m, x, y, nhood):
 
@@ -58,7 +80,7 @@ class TileClassifier:
         while (True):
             n = 0
             n += self._apply_tilespecs(m, sliver_spec)
-            n += self._apply_tilespecs(m, self.TT_CONCAVE, self.TT_CONVEX, self.TT_STRAIGHT)
+            n += self._apply_tilespecs(m, self.TS_CONCAVE, self.TS_CONVEX, self.TS_STRAIGHT)
 
             if (n <= 0):
                 break
@@ -66,8 +88,8 @@ class TileClassifier:
     def _apply_tilespecs(self, m, *tilespecs):
 
         """ Apply a list of tilespecs, i.e. remove illegal tiles. """
-        
-        dim = self.dim
+
+        dim = self._dim
         ext_m = self._extend_matrix(m)
         mask = np.full((dim, dim), True, dtype=bool)
 
@@ -75,10 +97,16 @@ class TileClassifier:
             for x in range(1, dim+1):
                 for y in range(1, dim+1):
                     cls = self._classify_tile(ext_m, mask, x, y, tilespec)
-                    if (cls is not None): mask[y-1, x-1] = cls
+                    if (type(cls) is bool):
+                        mask[y-1, x-1] = cls
+                    elif (type(cls) is int):
+                        mask[y-1, x-1] = False
+                        m[y-1, x-1] = cls
+                    elif (cls is not None):
+                        raise ValueError(cls)
 
         m[mask] = False
-        self.flayer.matrix[mask] = (0xFE if self.rev else 0)
+        self._flayer.matrix[mask] = (0xFF if self._rev else 0)
 
         return np.count_nonzero(mask)
 
@@ -86,25 +114,28 @@ class TileClassifier:
 
         """ Classify a single tile. tilespec may be a valid ternary matrix which
         is rotated into all possible positions and compared with the tile's
-        immediate neighborhood _or_ a callable.
+        immediate neighborhood _or_ a callable. Returns a TT _or_ a boolean
+        affecting only the mask _or_ None for no effect at all.
         """
 
         nhood = m[y-1:y+2, x-1:x+2]
-        i = 4                       # rotate 4 times
+        i = 4                               # rotate 4 times
 
-        if (not mask[y-1, x-1]):    # already classed as OK, return
+        if (not mask[y-1, x-1]):            # already classed as OK, return
             return False
-        elif (not m[y, x]):         # non-interesting tile is OK, return
+        elif (m[y, x] == self.TT_EMPTY):    # non-interesting tile is OK, return
             return False
-        elif (nhood.all() == True): # interior terrain tile is OK, return
+        elif (nhood.all() > self.TT_EMPTY): # interior terrain tile is OK, return
             return False
 
         if (callable(tilespec)):
             return tilespec(m, x, y, nhood)
 
+        nhood_bool = nhood > self.TT_EMPTY
+
         while (i > 0):
-            if (self._is_ternary_matrix_equal(tilespec, nhood)):
-                return False
+            if (self._is_ternary_matrix_equal(tilespec, nhood_bool)):
+                return self.TT_CONCAVE_NE # TODO
             tilespec = self._rotate_matrix(tilespec)
             i -= 1
 
