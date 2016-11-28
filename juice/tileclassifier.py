@@ -21,8 +21,9 @@ class TileClassifier:
         [True, True, True],
         [True, True, True]])
 
-    TT_EMPTY = 0
-    TT_NA = 1
+    TT_EMPTY        = 0
+    TT_NA           = 1
+    TT_SOLID        = 2
 
     TT_CONCAVE_SE   = 11
     TT_CONCAVE_SW   = 12
@@ -126,7 +127,7 @@ class TileClassifier:
         elif (m[y, x] == self.TT_EMPTY):    # non-interesting tile is OK, return
             return False
         elif (nhood.all() > self.TT_EMPTY): # interior terrain tile is OK, return
-            return False
+            return self.TT_SOLID
 
         if (callable(tilespec)):
             return tilespec(m, x, y, nhood)
