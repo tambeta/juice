@@ -94,6 +94,11 @@ class TerrainLayer(GameFieldLayer, metaclass=abc.ABCMeta):
         return wrapped
 
 class SeaLayer(TerrainLayer):
+    
+    """ NOTE: SeaLayer classification is currently reversed, i.e. represents
+    the ground.
+    """
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.normalize_rev = True
