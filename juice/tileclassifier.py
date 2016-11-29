@@ -1,6 +1,7 @@
 
 import numpy as np
 
+from logging import debug, info, warning, error
 from juice.gamefieldlayer import GameFieldLayer
 
 class TileClassifier:
@@ -90,6 +91,7 @@ class TileClassifier:
 
             if (n <= 0):
                 break
+            debug("Classification pass: %d tiles removed", n)
         
         return GameFieldLayer(m)
         

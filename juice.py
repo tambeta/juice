@@ -2,11 +2,14 @@
 
 import argparse
 import array
+import logging
 import pickle
 import pprint
 import random
 import sys
 import time
+
+from logging import debug, info, warning, error
 
 import numpy as np
 import pyglet
@@ -53,6 +56,10 @@ def parse_command_line():
         help="Timing / profiling mode, exit after terrain generation"
     )
     parser.add_argument(
+        "-L", "--log-level", type=str, default="INFO",
+        help="Log level, one of CRITICAL, ERROR, WARNING, INFO, DEBUG."
+    )    
+    parser.add_argument(
         "-m", "--map", action="store_true",
         help="Display overview map instead of entering the game"
     )
@@ -61,6 +68,13 @@ def parse_command_line():
     parser.add_argument(
         "-l", "--load", type=str, help="Load a saved map")
     return parser.parse_args()
+
+def setup_logging(loglevel_str):
+    handler = logging.StreamHandler()
+    loglevel = getattr(logging, loglevel_str.upper())
+    logformat = "%(asctime)s %(levelname)7s: %(message)s"    
+    
+    logging.basicConfig(level=loglevel, format=logformat, handlers=[handler])
 
 def save_state(obj, fn):
     f = open(fn, "wb")
@@ -102,15 +116,17 @@ def main():
     viewport_y = 0
     
     np.set_printoptions(threshold=10)
-    print("random seed:", randseed)
-    print("scaling:", scaling)
+    setup_logging(args.log_level)
+    
+    info("random seed: %d", randseed)
+    info("scaling: %d", scaling)
 
     if (not args.load):
         terr = generate(randseed)
         if (args.save):
             save_state(terr, args.save)
     else:
-        print("Loading map from `{}`".format(args.load))
+        info("Loading map from `{}`".format(args.load))
         terr = load_state(args.load)
     
     if (args.timing):
