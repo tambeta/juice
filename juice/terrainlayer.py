@@ -29,10 +29,11 @@ class TerrainLayer(GameFieldLayer, metaclass=abc.ABCMeta):
 
         self.matrix = None
         self.terrain = None
+        self.classification = None
+        
         self._require = None
         self._randseed = randseed
-
-        self._generate = self.generate
+        self._generate = self.generate        
         self.generate = self._check_requirements
 
         random.seed(randseed)
@@ -75,8 +76,9 @@ class TerrainLayer(GameFieldLayer, metaclass=abc.ABCMeta):
 
     def normalized(fn):
 
-        """ Decorator for generate methods. Applies normalization after
-        generation. Object's normalize_rev attribute controls TileClassifier's
+        """ Decorator for generate methods. Applies tile classification /
+        normalization after generation and stores it in the `classification`
+        attribute. Object's normalize_rev attribute controls TileClassifier's
         rev option.
         """
 
@@ -87,7 +89,7 @@ class TerrainLayer(GameFieldLayer, metaclass=abc.ABCMeta):
                 rev = False
 
             fn(tlayer)
-            TileClassifier(tlayer, rev=rev).classify()
+            tlayer.classification = TileClassifier(tlayer, rev=rev).classify()
 
         return wrapped
 
@@ -374,6 +376,8 @@ class CityLayer(TerrainLayer):
 
         """ After layer generation, iterate over cities pair-wise and remove one
         in every pair whose distance is lower than a threshold.
+        
+        TODO: possibly use convolution for a massive speedup.
         """
 
         matrix = self.matrix

@@ -17,14 +17,14 @@ class GameView:
     TILE_E          = 2
     TILE_S          = 3
     TILE_W          = 4
-    TILE_NE         = 5
-    TILE_SE         = 6
-    TILE_SW         = 7
-    TILE_NW         = 8
-    TILE_LAND_NE    = 9
-    TILE_LAND_SE    = 10
-    TILE_LAND_SW    = 11
-    TILE_LAND_NW    = 12
+    TILE_CONVEX_NE  = 5
+    TILE_CONVEX_SE  = 6
+    TILE_CONVEX_SW  = 7
+    TILE_CONVEX_NW  = 8
+    TILE_CONCAVE_NE = 9
+    TILE_CONCAVE_SE = 10
+    TILE_CONCAVE_SW = 11
+    TILE_CONCAVE_NW = 12
     TILE_LAND       = 13
     TILE_ISLAND     = 14
     TILE_NA         = 255
@@ -41,7 +41,7 @@ class GameView:
         """ Blit a portion of the rendered map onto the active buffer. Offsets
         and dimensions given in game coordinates.
         """
-
+        
         tiles = self.tiles
         tile_dim = self.tiledim
         tilemap = self.tilemap
@@ -76,15 +76,15 @@ class GameView:
             ((False, False, False, False, False, False, False, False), self.TILE_LAND),
             ((True, True, True, True), self.TILE_ISLAND),
 
-            ((True, True, False, False), self.TILE_NE),
-            ((False, True, True, False), self.TILE_SE),
-            ((False, False, True, True), self.TILE_SW),
-            ((True, False, False, True), self.TILE_NW),
+            ((True, True, False, False), self.TILE_CONVEX_NE),
+            ((False, True, True, False), self.TILE_CONVEX_SE),
+            ((False, False, True, True), self.TILE_CONVEX_SW),
+            ((True, False, False, True), self.TILE_CONVEX_NW),
 
-            ((False, False, False, False, False, True, False, False), self.TILE_LAND_NE),
-            ((False, False, False, False, False, False, False, True), self.TILE_LAND_SE),
-            ((False, True, False, False, False, False, False, False), self.TILE_LAND_SW),
-            ((False, False, False, True, False, False, False, False), self.TILE_LAND_NW),
+            ((False, False, False, False, False, True, False, False), self.TILE_CONCAVE_NE),
+            ((False, False, False, False, False, False, False, True), self.TILE_CONCAVE_SE),
+            ((False, True, False, False, False, False, False, False), self.TILE_CONCAVE_SW),
+            ((False, False, False, True, False, False, False, False), self.TILE_CONCAVE_NW),
 
             ((True, False, False, False), self.TILE_N),
             ((False, True, False, False), self.TILE_E),
@@ -153,15 +153,15 @@ class GameView:
             self.TILE_S         : tileset.get_tile(22, 10),
             self.TILE_W         : tileset.get_tile(21, 9),
 
-            self.TILE_NE        : tileset.get_tile(23, 8),
-            self.TILE_SE        : tileset.get_tile(23, 10),
-            self.TILE_SW        : tileset.get_tile(21, 10),
-            self.TILE_NW        : tileset.get_tile(21, 8),
+            self.TILE_CONVEX_NE : tileset.get_tile(23, 8),
+            self.TILE_CONVEX_SE : tileset.get_tile(23, 10),
+            self.TILE_CONVEX_SW : tileset.get_tile(21, 10),
+            self.TILE_CONVEX_NW : tileset.get_tile(21, 8),
 
-            self.TILE_LAND_NE   : tileset.get_tile(23, 6),
-            self.TILE_LAND_SE   : tileset.get_tile(23, 7),
-            self.TILE_LAND_SW   : tileset.get_tile(22, 7),
-            self.TILE_LAND_NW   : tileset.get_tile(22, 6),
+            self.TILE_CONCAVE_NE: tileset.get_tile(23, 6),
+            self.TILE_CONCAVE_SE: tileset.get_tile(23, 7),
+            self.TILE_CONCAVE_SW: tileset.get_tile(22, 7),
+            self.TILE_CONCAVE_NW: tileset.get_tile(22, 6),
 
             self.TILE_LAND      : tileset.get_tile(22, 9),
             self.TILE_ISLAND    : tileset.get_tile(21, 7),
