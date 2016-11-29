@@ -9,26 +9,29 @@ class TileClassifier:
     """
 
     TS_CONCAVE  = np.array([
-        [False, True, True],
         [True, True, True],
-        [True, True, True]])
+        [True, True, True],
+        [False, True, True]])
     TS_CONVEX   = np.array([
         [None, False, None],
-        [False, True, True],
-        [None, True, True]])
+        [True, True, False],
+        [True, True, None]])
     TS_STRAIGHT   = np.array([
         [None, False, None],
         [True, True, True],
         [True, True, True]])
 
+    # Note: Rotated variations of the same types are expected to be
+    # successive integers.
+
     TT_EMPTY        = 0
     TT_NA           = 1
     TT_SOLID        = 2
 
-    TT_CONCAVE_SE   = 11
-    TT_CONCAVE_SW   = 12
-    TT_CONCAVE_NW   = 13
-    TT_CONCAVE_NE   = 14
+    TT_CONCAVE_NE   = 11
+    TT_CONCAVE_SE   = 12
+    TT_CONCAVE_SW   = 13
+    TT_CONCAVE_NW   = 14
 
     TT_CONVEX_NE    = 15
     TT_CONVEX_SE    = 16
@@ -95,9 +98,18 @@ class TileClassifier:
         mask = np.full((dim, dim), True, dtype=bool)
 
         for tilespec in (tilespecs):
+            initial_tt = None
+
+            if (np.equal(tilespec, self.TS_STRAIGHT).all()):
+                initial_tt = self.TT_STRAIGHT_N
+            elif (np.equal(tilespec, self.TS_CONCAVE).all()):
+                initial_tt = self.TT_CONCAVE_NE
+            elif (np.equal(tilespec, self.TS_CONVEX).all()):
+                initial_tt = self.TT_CONVEX_NE
+
             for x in range(1, dim+1):
                 for y in range(1, dim+1):
-                    cls = self._classify_tile(ext_m, mask, x, y, tilespec)
+                    cls = self._classify_tile(ext_m, mask, x, y, tilespec, initial_tt)
                     if (type(cls) is bool):
                         mask[y-1, x-1] = cls
                     elif (type(cls) is int):
@@ -111,7 +123,7 @@ class TileClassifier:
 
         return np.count_nonzero(mask)
 
-    def _classify_tile(self, m, mask, x, y, tilespec):
+    def _classify_tile(self, m, mask, x, y, tilespec, initial_tt):
 
         """ Classify a single tile. tilespec may be a valid ternary matrix which
         is rotated into all possible positions and compared with the tile's
@@ -120,7 +132,7 @@ class TileClassifier:
         """
 
         nhood = m[y-1:y+2, x-1:x+2]
-        i = 4                               # rotate 4 times
+        i = 0
 
         if (not mask[y-1, x-1]):            # already classed as OK, return
             return False
@@ -132,13 +144,15 @@ class TileClassifier:
         if (callable(tilespec)):
             return tilespec(m, x, y, nhood)
 
+        # Test tilespec at 4 rotations at most
+
         nhood_bool = nhood > self.TT_EMPTY
 
-        while (i > 0):
+        while (i < 4):
             if (self._is_ternary_matrix_equal(tilespec, nhood_bool)):
-                return self.TT_CONCAVE_NE # TODO
+                return initial_tt + i
             tilespec = self._rotate_matrix(tilespec)
-            i -= 1
+            i += 1
 
     def _rotate_matrix(self, m):
         return np.fliplr(np.transpose(m))
