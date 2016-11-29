@@ -125,7 +125,7 @@ class TileClassifier:
                         raise ValueError(cls)
 
         m[mask] = False
-        self._flayer.matrix[mask] = (0xFF if self._rev else 0)
+        self._flayer.matrix[mask] = (0xFE if self._rev else 0)
 
         return np.count_nonzero(mask)
 

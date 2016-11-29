@@ -47,6 +47,8 @@ class GameFieldLayer:
 
         """ Convenience routine to loop over all (edge and corner) neigbors. The
         documentation for foreach_edge_neighbor applies otherwise.
+        
+        Note: often convolution is preferable, e.g. http://stackoverflow.com/a/12613511
         """
 
         dim = self.terrain.dim
@@ -69,6 +71,8 @@ class GameFieldLayer:
         coordinates. Callback can break by returning False, in which case the
         method returns False. Upon completion of iterating over all neighbors,
         returns True.
+        
+        Note: often convolution is preferable, e.g. http://stackoverflow.com/a/12613511
         """
 
         dim = self.terrain.dim

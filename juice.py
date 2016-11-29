@@ -114,8 +114,7 @@ def main():
     
     viewport_x = 0
     viewport_y = 0
-    
-    np.set_printoptions(threshold=10)
+    np.set_printoptions(threshold=float("nan"))
     setup_logging(args.log_level)
     
     info("random seed: %d", randseed)

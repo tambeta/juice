@@ -4,6 +4,7 @@ import math
 import random
 
 import numpy as np
+import scipy.signal
 
 from juice.heightmap import Heightmap
 from juice.gamefieldlayer import GameFieldLayer
@@ -36,18 +37,18 @@ class TerrainLayer(GameFieldLayer, metaclass=abc.ABCMeta):
 
         random.seed(randseed)
         np.random.seed(randseed)
-    
+
     @abc.abstractmethod
     def generate(self):
         pass
-    
+
     def _init_matrix(self):
 
         """ Init the matrix and return it. """
 
         self.matrix = np.zeros(np.shape(self.terrain.heightmap.matrix), dtype=np.uint8)
         return self.matrix
-    
+
     def _check_requirements(self):
 
         """ A wrapper for checking the generation requirements, i.e. layers that
@@ -63,43 +64,43 @@ class TerrainLayer(GameFieldLayer, metaclass=abc.ABCMeta):
                 except LookupError as e:
                     raise RequirementError(\
                         "Requirement " + str(r) + " not satisfied for " + str(self))
-        
+
         # Call the wrapped method, invalidate matrix in case of any exceptions
-        
+
         try:
             self._generate()
         except Exception as e:
             self.matrix = None
             raise e
-    
+
     def normalized(fn):
-        
+
         """ Decorator for generate methods. Applies normalization after
         generation. Object's normalize_rev attribute controls TileClassifier's
         rev option.
         """
-        
+
         def wrapped(tlayer):
             try:
                 rev = tlayer.normalize_rev
             except AttributeError:
                 rev = False
-            
+
             fn(tlayer)
             TileClassifier(tlayer, rev=rev).classify()
-        
+
         return wrapped
 
 class SeaLayer(TerrainLayer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.normalize_rev = True
-    
+
     @TerrainLayer.normalized
     def generate(self):
 
         """ Generate the sea layer based on sea threshold. Disallow seas
-        (contiguous areas of water) below a fixed size. 
+        (contiguous areas of water) below a fixed size.
         """
 
         terrain = self.terrain
@@ -143,7 +144,7 @@ class RiverLayer(TerrainLayer):
 
             if (n_river_tiles < terrain.MIN_RIVER_SOURCES):
                 n_river_tiles = min(len(mtn_coords), terrain.MIN_RIVER_SOURCES)
-            
+
             np.random.shuffle(mtn_coords)
             rvr_source_coords = mtn_coords[0:n_river_tiles]
         else:
@@ -171,10 +172,10 @@ class RiverLayer(TerrainLayer):
         if (river_id >= 2 ** (matrix.dtype.itemsize * 8)):
             raise ValueError(
                 "River ID {} is larger than can be held by {}".format(river_id, matrix.dtype))
-            
+
         while True:
             ok_neighbors = []
-            
+
             if (smatrix[y, x] > 0):
                 return True
             elif (self._is_square_converging(x, y, river_id)):
@@ -244,121 +245,133 @@ class RiverLayer(TerrainLayer):
 
 class BiomeLayer(TerrainLayer):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)        
+        super().__init__(*args, **kwargs)
         self._require = (SeaLayer, RiverLayer)
 
+    @TerrainLayer.normalized
     def generate(self):
-        
+
         """ Biomes are generated based on the heightmap, allowed in intermediate
         heights between sea and mountains. Contiguous biome segments are
-        assigned a random ID (desert or forest).
+        assigned a random ID (desert or forest). Note that MIN_BIOME_SIZE is
+        enforced _before_ normalization.
         """
-        
+
         terrain = self.terrain
         hmatrix = terrain.heightmap.matrix
         smatrix = terrain.get_layer_by_type(SeaLayer).matrix
         rmatrix = terrain.get_layer_by_type(RiverLayer).matrix
         biome_ids = (terrain.FOREST_ID, terrain.DESERT_ID)
-        
+
+        # Set a height range to biome
+
         self.matrix = np.where(np.logical_and(
-            hmatrix > terrain.SEA_THRESHOLD + terrain.BIOME_H_DELTA, 
+            hmatrix > terrain.SEA_THRESHOLD + terrain.BIOME_H_DELTA,
             hmatrix < terrain.MOUNTAIN_THRESHOLD - terrain.BIOME_H_DELTA
         ), 1, 0)
-        n_segments = \
-            self.label_segments(terrain.MIN_BIOME_SIZE)        
-        
-        for segment_id in range(1, n_segments + 1):
-            segment_size = len(np.where(self.matrix == segment_id)[0])
-            
-            if (segment_size):
-                biome_id = random.sample(biome_ids, 1)[0]
-                self.matrix[self.matrix == segment_id] = biome_id
-        
+
+        # Unset areas under rivers and next to the sea. Use a 3x3 convolution
+        # filter on the sea matrix to find beach tiles.
+
+        sconv = scipy.signal.convolve2d(smatrix, np.ones((3, 3)), mode="same")
+
         self.matrix = np.where(
-            np.logical_and(rmatrix == 0, smatrix == 0),
+            np.logical_and(np.logical_and(rmatrix == 0, smatrix == 0), sconv == 0),
             self.matrix, 0
         )
 
+        # Assign random types to contiguous segments
+
+        n_segments = \
+            self.label_segments(terrain.MIN_BIOME_SIZE)
+
+        for segment_id in range(1, n_segments + 1):
+            segment_size = len(np.where(self.matrix == segment_id)[0])
+
+            if (segment_size):
+                biome_id = random.sample(biome_ids, 1)[0]
+                self.matrix[self.matrix == segment_id] = biome_id
+
 class CityLayer(TerrainLayer):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)        
+        super().__init__(*args, **kwargs)
         self._require = (SeaLayer, RiverLayer, BiomeLayer)
 
     def generate(self):
-        
+
         """ Generate city layer by assigning a score to each allowed land square
         (e.g. by biome and proximity to water), then picking n_cities weighed by
         score.
         """
-        
+
         terrain = self.terrain
-    
+
         matrix = self._init_matrix()
         hmatrix = terrain.heightmap.matrix
         smatrix = terrain.get_layer_by_type(SeaLayer).matrix
         rmatrix = terrain.get_layer_by_type(RiverLayer).matrix
         bmatrix = terrain.get_layer_by_type(BiomeLayer).matrix
-        
+
         landmatrix = self.label_matrix_segments(
             np.where(smatrix == 0, 1, 0), terrain.MIN_POPSUPPORT_SIZE)[0]
         landmatrix = \
             np.where(np.logical_and(landmatrix != 0, rmatrix == 0), 1, 0)
-            
+
         n_coords = len(np.nonzero(landmatrix)[0])
-        n_cities = int(n_coords * terrain.CITY_DENSITY)        
+        n_cities = int(n_coords * terrain.CITY_DENSITY)
         coord_i = 0
         coords = []
         score_vec = np.empty([n_coords])
         coord_i_vec = np.arange(n_coords)
-        
+
         def check_river_adjacency(x, y):
             if (rmatrix[y, x] != 0):
                 return False
-                
+
         def check_sea_adjacency(x, y):
             if (smatrix[y, x] != 0):
                 return False
-        
+
         it = np.nditer(matrix, flags=["multi_index"])
-        
+
         while (not it.finished):
             p = it.multi_index
             x = p[1]; y = p[0]
             score = 1
-            
+
             if (landmatrix[y, x] == 0):
                 it.iternext()
                 continue
-                
+
             if (self.foreach_neighbor(check_river_adjacency, x, y) == False):
                 score += 3
             if (self.foreach_neighbor(check_sea_adjacency, x, y) == False):
                 score += 3
-            
+
             if (bmatrix[y, x] == terrain.DESERT_ID):
                 score -= 0.9
             elif (bmatrix[y, x] == terrain.FOREST_ID):
                 score -= 0.5
-            
+
             score_vec[coord_i] = score
             coords.append((x, y))
-            coord_i += 1            
+            coord_i += 1
             it.iternext()
-        
+
         assert(coord_i == n_coords == len(coords))
-        
+
         score_vec /= np.sum(score_vec)
         city_coord_is = \
             np.random.choice(coord_i_vec, size=n_cities, p=score_vec)
-        
+
         for i in np.nditer(city_coord_is):
             p = coords[i]; x = p[0]; y = p[1]
             self.matrix[p[1], p[0]] = 1
-            
+
         self._remove_close_cities()
 
     def _remove_close_cities(self):
-        
+
         """ After layer generation, iterate over cities pair-wise and remove one
         in every pair whose distance is lower than a threshold.
         """
@@ -367,21 +380,21 @@ class CityLayer(TerrainLayer):
         terrain = self.terrain
         coords = np.dstack(np.nonzero(self.matrix))[0]
         d_threshold = min(
-            terrain.dim // terrain.CITY_CLOSENESS_FACTOR, 
+            terrain.dim // terrain.CITY_CLOSENESS_FACTOR,
             terrain.MAX_CITY_DISALLOW_RADIUS
         )
-        
+
         def foreach_coord(coords, cb, *extra):
             x = 0
             y = 0
-            
+
             for (i, c) in enumerate(np.nditer(coords, order="C")):
                 if (i % 2 == 0):
                     y = c
                 else:
                     x = c
                     cb(x, y, *extra)
-        
+
         def remove_close_dests(src_x, src_y, coords, matrix):
             def check_and_remove(dst_x, dst_y):
                 if (src_x == dst_x and src_y == dst_y):
@@ -392,10 +405,10 @@ class CityLayer(TerrainLayer):
                     return
                 elif (math.sqrt((src_x - dst_x)**2 + (src_y - dst_y)**2) > d_threshold):
                     return
-                    
+
                 matrix[dst_y, dst_x] = 0
-                
+
             foreach_coord(coords, check_and_remove)
-        
+
         foreach_coord(coords, remove_close_dests, coords, matrix)
         self.matrix = matrix
