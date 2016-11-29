@@ -2,18 +2,22 @@
 import numpy as np
 import scipy.ndimage as ndi
 
-#from juice.tileset import TileSet
-#from juice.terrainlayer import \
-#    TerrainLayer, RiverLayer, SeaLayer, BiomeLayer, CityLayer
-
 class GameFieldLayer:
 
     """ A class representing any matrix associated with the game field.
     Notably subclassed by TerrainLayer.
     """
 
-    def __init__(self, dim, fill=0):
-        self.matrix = np.full((dim, dim), fill, dtype=np.uint8)
+    def __init__(self, matrix_or_dim, fill=0):
+        
+        """ Construct a new object by using an existing ndarray or creating a
+        new square matrix with the square length.
+        """
+        
+        if (type(matrix_or_dim) is np.ndarray):
+            self.matrix = matrix_or_dim
+        else:
+            self.matrix = np.full((matrix_or_dim, matrix_or_dim), fill, dtype=np.uint8)
 
     def get_points(self, x=0, y=0, w=None, h=None, skip_zero=True):
 

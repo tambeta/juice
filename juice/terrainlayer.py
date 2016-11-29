@@ -86,7 +86,7 @@ class TerrainLayer(GameFieldLayer, metaclass=abc.ABCMeta):
                 rev = False
             
             fn(tlayer)
-            TileClassifier(tlayer, rev=rev).normalize()
+            TileClassifier(tlayer, rev=rev).classify()
         
         return wrapped
 

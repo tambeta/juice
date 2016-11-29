@@ -1,6 +1,8 @@
 
 import numpy as np
 
+from juice.gamefieldlayer import GameFieldLayer
+
 class TileClassifier:
 
     """ A class for converting a GameFieldLayer into the space of possible
@@ -61,11 +63,11 @@ class TileClassifier:
         self._dim = flayer.matrix.shape[0]
         self._rev = rev
 
-    def normalize(self):
+    def classify(self):
 
-        """ Normalize the GameFieldLayer, i.e. remove all illegal tiles. Remove
-        slivers first, then mark any tiles representable with the standard tile
-        set. Repeat until convergence.
+        """ Classify the input GameFieldLayer, i.e. remove all illegal tiles and
+        label the rest as a tiletype. Remove slivers first, then mark any tiles
+        representable with the standard tile set. Repeat until convergence.
         """
 
         m = self._cls_matrix
@@ -88,7 +90,9 @@ class TileClassifier:
 
             if (n <= 0):
                 break
-
+        
+        return GameFieldLayer(m)
+        
     def _apply_tilespecs(self, m, *tilespecs):
 
         """ Apply a list of tilespecs, i.e. remove illegal tiles. """
