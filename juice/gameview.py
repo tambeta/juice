@@ -6,6 +6,7 @@ from juice.gamefieldlayer import GameFieldLayer
 from juice.tileclassifier import TileClassifier
 from juice.terrainlayer import \
     TerrainLayer, RiverLayer, SeaLayer, BiomeLayer, CityLayer
+from juice.terrainlayerview import TerrainLayerView
 
 class GameView:
 
@@ -18,6 +19,10 @@ class GameView:
         self._tiledim = tiledim
         self._tileset = TileSet("assets/img/tileset.png", tiledim)
         self._tiles = self._gather_tiles()
+        self._layerviews = []
+        
+        for tl in terrain.get_layers():
+            self._layerviews.append(TerrainLayerView(tl))
 
     def blit(self, x_offset, y_offset, w, h):
 
