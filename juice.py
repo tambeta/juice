@@ -14,6 +14,7 @@ from logging import debug, info, warning, error
 import numpy as np
 import pyglet
 import pyglet.window.key as key
+import pyglet.gl as gl
 
 from juice.heightmap import Heightmap
 from juice.terrain import Terrain
@@ -111,7 +112,7 @@ def main():
     terr = None
     view = None
     display_img = None
-    
+
     viewport_x = 0
     viewport_y = 0
     np.set_printoptions(threshold=float("nan"))
@@ -119,6 +120,9 @@ def main():
     
     info("random seed: %d", randseed)
     info("scaling: %d", scaling)
+
+    pyglet.gl.glEnable(gl.GL_BLEND)
+    pyglet.gl.glBlendFunc(pyglet.gl.GL_SRC_ALPHA, pyglet.gl.GL_ONE_MINUS_SRC_ALPHA)
 
     if (not args.load):
         terr = generate(randseed)

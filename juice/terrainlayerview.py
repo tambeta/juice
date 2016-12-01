@@ -3,6 +3,7 @@ import re
 
 from juice.terrainlayer import \
     TerrainLayer, SeaLayer, BiomeLayer
+from juice.tileclassifier import TileClassifier
 
 class TerrainLayerView:
 
@@ -11,7 +12,7 @@ class TerrainLayerView:
     the TerrainLayer hierarchy for loose coupling.
     """
 
-    def __new__(cls, tlayer):
+    def __new__(cls, tlayer, *args):
         tltype = type(tlayer)
         tlname = tltype.__name__
 
@@ -31,23 +32,67 @@ class TerrainLayerView:
 
         raise TypeError("No matching TerrainLayerView subclass for " + str(type(tlayer).__name__))
 
-    def __init__(self, *args):
-        raise RuntimeError("Cannot instantiate TerrainLayerView")
+    def __init__(self, tlayer, tileset):
+        self.terrainlayer = tlayer
+        self._tileset = tileset
+
+    def get_tiles(self):
+        raise NotImplementedError("No get_tiles() for ", type(self).__name__)
 
 class _SeaLayerView(TerrainLayerView):
-    def __init__(self, *args):
-        pass
+    def get_tiles(self):
+        tileset = self._tileset
+
+        return {
+            TileClassifier.TT_STRAIGHT_N    : tileset.get_tile(22, 8),
+            TileClassifier.TT_STRAIGHT_E    : tileset.get_tile(23, 9),
+            TileClassifier.TT_STRAIGHT_S    : tileset.get_tile(22, 10),
+            TileClassifier.TT_STRAIGHT_W    : tileset.get_tile(21, 9),
+
+            TileClassifier.TT_CONVEX_NE     : tileset.get_tile(23, 8),
+            TileClassifier.TT_CONVEX_SE     : tileset.get_tile(23, 10),
+            TileClassifier.TT_CONVEX_SW     : tileset.get_tile(21, 10),
+            TileClassifier.TT_CONVEX_NW     : tileset.get_tile(21, 8),
+
+            TileClassifier.TT_CONCAVE_NE    : tileset.get_tile(23, 6),
+            TileClassifier.TT_CONCAVE_SE    : tileset.get_tile(23, 7),
+            TileClassifier.TT_CONCAVE_SW    : tileset.get_tile(22, 7),
+            TileClassifier.TT_CONCAVE_NW    : tileset.get_tile(22, 6),
+
+            TileClassifier.TT_SOLID         : tileset.get_tile(22, 9),
+            TileClassifier.TT_EMPTY         : tileset.get_tile(28, 3),
+            TileClassifier.TT_NA            : tileset.get_tile(16, 3)
+        }
 
 class _RiverLayerView(TerrainLayerView):
-    def __init__(self, *args):
-        pass
+    pass
 
 class _BiomeLayerView(TerrainLayerView):
-    def __init__(self, *args):
-        pass
+    def get_tiles(self):
+        tileset = self._tileset
+
+        return {
+            TileClassifier.TT_STRAIGHT_N    : tileset.get_tile(13, 8),
+            TileClassifier.TT_STRAIGHT_E    : tileset.get_tile(14, 9),
+            TileClassifier.TT_STRAIGHT_S    : tileset.get_tile(13, 10),
+            TileClassifier.TT_STRAIGHT_W    : tileset.get_tile(12, 9),
+
+            TileClassifier.TT_CONVEX_NE     : tileset.get_tile(14, 8),
+            TileClassifier.TT_CONVEX_SE     : tileset.get_tile(14, 10),
+            TileClassifier.TT_CONVEX_SW     : tileset.get_tile(12, 10),
+            TileClassifier.TT_CONVEX_NW     : tileset.get_tile(12, 8),
+
+            TileClassifier.TT_CONCAVE_NE    : tileset.get_tile(14, 6),
+            TileClassifier.TT_CONCAVE_SE    : tileset.get_tile(14, 7),
+            TileClassifier.TT_CONCAVE_SW    : tileset.get_tile(13, 7),
+            TileClassifier.TT_CONCAVE_NW    : tileset.get_tile(13, 6),
+
+            TileClassifier.TT_SOLID         : tileset.get_tile(13, 9),
+            TileClassifier.TT_EMPTY         : None,
+            TileClassifier.TT_NA            : tileset.get_tile(16, 3)
+        }
 
 class _CityLayerView(TerrainLayerView):
-    def __init__(self, *args):
-        pass
+    pass
 
 

@@ -1,11 +1,10 @@
 
+from warnings import warn
+
 import pyglet
 
 from juice.tileset import TileSet
-from juice.gamefieldlayer import GameFieldLayer
-from juice.tileclassifier import TileClassifier
-from juice.terrainlayer import \
-    TerrainLayer, RiverLayer, SeaLayer, BiomeLayer, CityLayer
+from juice.terrainlayer import TerrainLayer
 from juice.terrainlayerview import TerrainLayerView
 
 class GameView:
@@ -15,62 +14,50 @@ class GameView:
     """
 
     def __init__(self, terrain, tiledim):
-        self._terrain = terrain
         self._tiledim = tiledim
-        self._tileset = TileSet("assets/img/tileset.png", tiledim)
-        self._tiles = self._gather_tiles()
         self._layerviews = []
-        
+        self._screenbuf = pyglet.image.get_buffer_manager().get_color_buffer()
+
+        tileset = TileSet("assets/img/tileset.png", tiledim)
+
         for tl in terrain.get_layers():
-            self._layerviews.append(TerrainLayerView(tl))
+            self._layerviews.append(TerrainLayerView(tl, tileset))
 
     def blit(self, x_offset, y_offset, w, h):
 
-        """ Blit a portion of the rendered map onto the active buffer. Offsets
-        and dimensions given in game coordinates.
+        """ Blit a portion of the rendered map onto the active buffer, looping
+        over TerrainLayerViews in order. Offsets and dimensions given in game
+        coordinates.
         """
-        
-        tiles = self._tiles
-        tile_dim = self._tiledim
-        slayer = self._terrain.get_layer_by_type(SeaLayer)
-        tilemap = slayer.classification        
 
-        screenbuf = pyglet.image.get_buffer_manager().get_color_buffer()
+        screenbuf = self._screenbuf
+        tile_dim = self._tiledim
         screen_w = screenbuf.width
         screen_h = screenbuf.height
 
-        for (x, y, v) in tilemap.get_points(x_offset, y_offset, w, h, skip_zero=False):
-            xdelta = x - x_offset
-            ydelta = y - y_offset
-            blitx = xdelta * tile_dim
-            blity = screen_h - (tile_dim * (ydelta + 1))
-            tiletype = tilemap.matrix[y, x]
+        for lview in self._layerviews:
+            tlayer = lview.terrainlayer
+            tilemap = tlayer.classification
 
-            tiles[tiletype].blit(blitx, blity)
+            try:
+                tiles = lview.get_tiles()
+            except NotImplementedError:
+                warn("No tile gfx specification found for {}, skipping"
+                    .format(type(lview).__name__))
+                continue
 
-    def _gather_tiles(self):
+            if (not tilemap):
+                warn("No tile classification found for {}, skipping"
+                    .format(type(tlayer).__name__))
+                continue
 
-        """ Gather tiles into a labeled structure. """
+            for (x, y, v) in tilemap.get_points(x_offset, y_offset, w, h, skip_zero=False):
+                xdelta = x - x_offset
+                ydelta = y - y_offset
+                blitx = xdelta * tile_dim
+                blity = screen_h - (tile_dim * (ydelta + 1))
+                tiletype = tilemap.matrix[y, x]
+                tile = tiles[tiletype]
 
-        tileset = self._tileset
-
-        return {
-            TileClassifier.TT_STRAIGHT_N    : tileset.get_tile(22, 8),
-            TileClassifier.TT_STRAIGHT_E    : tileset.get_tile(23, 9),
-            TileClassifier.TT_STRAIGHT_S    : tileset.get_tile(22, 10),
-            TileClassifier.TT_STRAIGHT_W    : tileset.get_tile(21, 9),
-
-            TileClassifier.TT_CONVEX_NE     : tileset.get_tile(23, 8),
-            TileClassifier.TT_CONVEX_SE     : tileset.get_tile(23, 10),
-            TileClassifier.TT_CONVEX_SW     : tileset.get_tile(21, 10),
-            TileClassifier.TT_CONVEX_NW     : tileset.get_tile(21, 8),
-
-            TileClassifier.TT_CONCAVE_NE    : tileset.get_tile(23, 6),
-            TileClassifier.TT_CONCAVE_SE    : tileset.get_tile(23, 7),
-            TileClassifier.TT_CONCAVE_SW    : tileset.get_tile(22, 7),
-            TileClassifier.TT_CONCAVE_NW    : tileset.get_tile(22, 6),
-
-            TileClassifier.TT_SOLID         : tileset.get_tile(22, 9),
-            TileClassifier.TT_EMPTY         : tileset.get_tile(28, 3),
-            TileClassifier.TT_NA            : tileset.get_tile(16, 3)
-        }
+                if (tile):
+                    tile.blit(blitx, blity)
