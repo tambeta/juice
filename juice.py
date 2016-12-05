@@ -16,12 +16,13 @@ import pyglet
 import pyglet.window.key as key
 import pyglet.gl as gl
 
-from juice.heightmap import Heightmap
-from juice.terrain import Terrain
-from juice.terrainlayer import \
+from juice.gameview         import GameView
+from juice.heightmap        import Heightmap
+from juice.terrain          import Terrain
+from juice.terrainlayer     import \
     TerrainLayer, RiverLayer, SeaLayer, BiomeLayer, CityLayer
-from juice.gameview import GameView
-from juice.tileclassifier import TileClassifier
+from juice.tileclassifier   import TileClassifier
+from juice.tileset          import TileSet
 
 GAME_WIDTH = 832
 GAME_HEIGHT = 640
@@ -137,8 +138,9 @@ def main():
 
     if (args.map):
         display_img = terr.get_map_imgdata(scaling=scaling)
-
-    view = GameView(terr, TILE_DIM)
+    
+    tileset = TileSet("assets/img/tileset.png", TILE_DIM)
+    view = GameView(terr, tileset)
 
     def constrain_vpcoords(x, y):
         dim = terr.dim

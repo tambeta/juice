@@ -6,9 +6,11 @@ class GameFieldLayer:
 
     """ A class representing any matrix associated with the game field.
     Notably subclassed by TerrainLayer.
+    
+    TODO: direct assignment / access via []
     """
 
-    def __init__(self, matrix_or_dim, fill=0):
+    def __init__(self, matrix_or_dim, fill=0, dtype=np.uint8):
         
         """ Construct a new object by using an existing ndarray or creating a
         new square matrix with the square length.
@@ -17,7 +19,7 @@ class GameFieldLayer:
         if (type(matrix_or_dim) is np.ndarray):
             self.matrix = matrix_or_dim
         else:
-            self.matrix = np.full((matrix_or_dim, matrix_or_dim), fill, dtype=np.uint8)
+            self.matrix = np.full((matrix_or_dim, matrix_or_dim), fill, dtype=dtype)
 
     def get_points(self, x=0, y=0, w=None, h=None, skip_zero=True):
 

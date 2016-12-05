@@ -1,4 +1,5 @@
 
+import functools
 import re
 
 from juice.terrainlayer import \
@@ -40,6 +41,7 @@ class TerrainLayerView:
         raise NotImplementedError("No get_tiles() for ", type(self).__name__)
 
 class _SeaLayerView(TerrainLayerView):
+    @functools.lru_cache()
     def get_tiles(self):
         tileset = self._tileset
 
@@ -68,6 +70,7 @@ class _RiverLayerView(TerrainLayerView):
     pass
 
 class _BiomeLayerView(TerrainLayerView):
+    @functools.lru_cache()
     def get_tiles(self):
         tileset = self._tileset
 
