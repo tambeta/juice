@@ -42,7 +42,7 @@ class GameView:
             ydelta = y - y_offset
             blitx = xdelta * tile_dim
             blity = screen_h - (tile_dim * (ydelta + 1))
-            tile = tileidx[tilemap.matrix[y, x]]
+            tile = tileidx[v]
 
             if (tile):
                 tile.blit(blitx, blity)
