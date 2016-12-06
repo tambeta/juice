@@ -3,6 +3,8 @@ from warnings import warn
 
 import numpy as np
 import pyglet
+import pyglet.sprite
+import pyglet.graphics
 
 from juice.terrainlayer     import TerrainLayer
 from juice.terrainlayerview import TerrainLayerView
@@ -19,33 +21,68 @@ class GameView:
         self._tiledim = tileset.tiledim
         self._terrain = terrain
         self._layerviews = []
+        self._sprites = None
+        self._x = None
+        self._y = None
 
         for tl in terrain.get_layers():
             self._layerviews.append(TerrainLayerView(tl, tileset))
 
         (self._tileidx, self._tilemap) = self._construct_tilemap()
 
-    def blit(self, x_offset, y_offset, w, h):
+    def blit(self, x, y, w, h):
 
         """ Blit a portion of the rendered map onto the active buffer. Offsets
         and dimensions given in game coordinates.
         """
-
-        tileidx = self._tileidx
-        tilemap = self._tilemap
-        tile_dim = self._tiledim
+        
+        if (not self._sprites):
+            self._sprites = self._generate_sprites(x, y, w, h)
+            self._x = x
+            self._y = y
+        
+        tiledim = self._tiledim
+        sprites = self._sprites
+        old_x = self._x
+        old_y = self._y
+        
+        if (old_x != x or old_y != y):
+            x_delta_px = (x - old_x) * tiledim
+            y_delta_px = (y - old_y) * tiledim
+            
+            for s in sprites:
+                s.x -= x_delta_px
+                s.y += y_delta_px # pyglet y axis is reversed
+            
+            self._x = x
+            self._y = y
+        
+        sprites[0].batch.draw()
+    
+    def _generate_sprites(self, x, y, w, h):
+        
+        """ Generate the initial batch of sprites. """
+        
         screen_w = self._screenbuf.width
         screen_h = self._screenbuf.height
+        tileidx = self._tileidx
+        tilemap = self._tilemap        
+        tile_dim = self._tiledim
+        
+        sprites = []
+        batch = pyglet.graphics.Batch()
 
-        for (x, y, v) in tilemap.get_points(x_offset, y_offset, w, h, skip_zero=False):
-            xdelta = x - x_offset
-            ydelta = y - y_offset
+        for (cx, cy, v) in tilemap.get_points(x, y, w, h, skip_zero=False):
+            xdelta = cx - x
+            ydelta = cy - y
             blitx = xdelta * tile_dim
             blity = screen_h - (tile_dim * (ydelta + 1))
             tile = tileidx[v]
 
             if (tile):
-                tile.blit(blitx, blity)
+                sprites.append(pyglet.sprite.Sprite(tile, x=blitx, y=blity, batch=batch))
+            
+        return sprites
 
     def _construct_tilemap(self):
 
