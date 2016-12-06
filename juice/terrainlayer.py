@@ -2,13 +2,14 @@
 import abc
 import math
 import random
+import functools
 
 import numpy as np
 import scipy.signal
 
-from juice.heightmap import Heightmap
-from juice.gamefieldlayer import GameFieldLayer
-from juice.tileclassifier import TileClassifier
+from juice.heightmap        import Heightmap
+from juice.gamefieldlayer   import GameFieldLayer
+from juice.tileclassifier   import TileClassifier
 
 class RequirementError(Exception):
     pass
@@ -81,7 +82,8 @@ class TerrainLayer(GameFieldLayer, metaclass=abc.ABCMeta):
         attribute. Object's normalize_rev attribute controls TileClassifier's
         rev option.
         """
-
+        
+        @functools.wraps(fn)
         def wrapped(tlayer):
             try:
                 rev = tlayer.normalize_rev
