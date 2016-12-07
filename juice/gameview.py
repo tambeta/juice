@@ -20,11 +20,22 @@ from juice.tileset          import TileSet
 class GameView:
 
     """ A class representing a rendering of the game state onto the main
-    viewport. VIEW_PADDING is the buffer width (in tiles) on each side of
+    viewport.
+    
+    Mechanism: Initially, the whole game field is canvassed layer by layer
+    to construct a tile gfx store and the tile field, i.e. a GameFieldLayer
+    containing a reference to the tile store for each terrain coordinate.
+    Then, an array of pyglet Sprites covering a slightly larger area than
+    the viewport (VIEW_PADDING is the buffer width in tiles on each side)
+    are constructed; this set remains constant throughout the life of the
+    GameView. Upon scrolling (i.e. a request to blit() with different
+    coordinates than previously), the sprites are simply given new
+    (viewport) coordinates. Invalidated sprites (those outside of the padded
+    viewport) are recycled with new tile graphics to the opposite side of
     the viewport.
     """
 
-    VIEW_PADDING = 4
+    VIEW_PADDING = 1
 
     def __init__(self, terrain, x=0, y=0):
 
@@ -76,11 +87,14 @@ class GameView:
         if (old_x != x or old_y != y):
             dx = x - old_x
             dy = y - old_y
+            padding_px = padding * tiledim
             vpw = self._screenbuf.width
             vph = self._screenbuf.height
-            max_sx = vpw - 1
-            max_sy = vph - 1
-            min_sx = -tiledim + 1
+            vpw_padded = vpw + padding_px * 2
+            vph_padded = vph + padding_px * 2
+            max_sx = vpw + padding_px - 1
+            max_sy = vph + padding_px - 1
+            min_sx = -tiledim - padding_px + 1
             min_sy = min_sx
 
             for s in sprites:
@@ -91,16 +105,14 @@ class GameView:
 
                     # A sprite has been invalidated (offscreen)
 
-                    if (s.x < min_sx): s.x += vpw
-                    elif (s.x > max_sx): s.x -= vpw
+                    if (s.x < min_sx): s.x += vpw_padded
+                    elif (s.x > max_sx): s.x -= vpw_padded
 
-                    if (s.y < min_sy): s.y += vph
-                    elif (s.y > max_sy): s.y -= vph
+                    if (s.y < min_sy): s.y += vph_padded
+                    elif (s.y > max_sy): s.y -= vph_padded
 
-                    sgx = s.x
-                    sgy = (vph - s.y) - tiledim
-                    tx = (x + sgx) // tiledim
-                    ty = (y + sgy) // tiledim
+                    tx = (x + s.x) // tiledim
+                    ty = (y + (vph - s.y - tiledim)) // tiledim
 
                     s.image = tileidx[tilemap.matrix[ty, tx]].img
 
