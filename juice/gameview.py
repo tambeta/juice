@@ -1,6 +1,8 @@
 
 import functools
 import itertools
+
+from logging import debug, info, warning, error
 from warnings import warn
 
 import numpy as np
@@ -18,8 +20,11 @@ from juice.tileset          import TileSet
 class GameView:
 
     """ A class representing a rendering of the game state onto the main
-    viewport.
+    viewport. VIEW_PADDING is the buffer width (in tiles) on each side of
+    the viewport.
     """
+
+    VIEW_PADDING = 4
 
     def __init__(self, terrain, x=0, y=0):
 
@@ -34,11 +39,6 @@ class GameView:
         self._terrain = terrain
         self._layerviews = []
 
-        tile_x = x // tiledim
-        tile_y = y // tiledim
-        tile_w = screenbuf.width // tiledim
-        tile_h = screenbuf.height // tiledim
-
         self._x = x
         self._y = y
         self._max_x = terrain.dim * (tiledim - 1)
@@ -48,7 +48,7 @@ class GameView:
             self._layerviews.append(TerrainLayerView(tl, tileset))
 
         (self._tileidx, self._tilemap) = self._construct_tilemap()
-        self._sprites = self._generate_sprites(tile_x, tile_y, tile_w, tile_h)
+        self._sprites = self._generate_sprites()
 
     def blit(self, x, y):
 
@@ -59,7 +59,11 @@ class GameView:
         """
 
         tiledim = self._tiledim
+        tileidx = self._tileidx
+        tilemap = self._tilemap
         sprites = self._sprites
+        padding = self.VIEW_PADDING
+
         old_x = self._x
         old_y = self._y
 
@@ -72,10 +76,33 @@ class GameView:
         if (old_x != x or old_y != y):
             dx = x - old_x
             dy = y - old_y
+            vpw = self._screenbuf.width
+            vph = self._screenbuf.height
+            max_sx = vpw - 1
+            max_sy = vph - 1
+            min_sx = -tiledim + 1
+            min_sy = min_sx
 
             for s in sprites:
                 s.x -= dx
                 s.y += dy # pyglet y axis is reversed
+
+                if (s.x < min_sx or s.y < min_sy or s.x > max_sx or s.y > max_sy):
+
+                    # A sprite has been invalidated (offscreen)
+
+                    if (s.x < min_sx): s.x += vpw
+                    elif (s.x > max_sx): s.x -= vpw
+
+                    if (s.y < min_sy): s.y += vph
+                    elif (s.y > max_sy): s.y -= vph
+
+                    sgx = s.x
+                    sgy = (vph - s.y) - tiledim
+                    tx = (x + sgx) // tiledim
+                    ty = (y + sgy) // tiledim
+
+                    s.image = tileidx[tilemap.matrix[ty, tx]].img
 
             self._x = x
             self._y = y
@@ -126,6 +153,7 @@ class GameView:
 
             if (tileidx_key not in tileidx):
                 tile_stack = []
+                debug("Generating composite tile {}".format(tileidx_key))
 
                 for i in range(0, len(lviews)):
                     tile = layer_tiles[i][tt_stack[i]]
@@ -139,7 +167,7 @@ class GameView:
 
         return (tileidx, tilefield)
 
-    def _generate_sprites(self, x, y, w, h):
+    def _generate_sprites(self):
 
         """ Generate the initial batch of sprites. """
 
@@ -149,12 +177,17 @@ class GameView:
         tilemap = self._tilemap
         tile_dim = self._tiledim
 
+        tile_x = self._x // tile_dim
+        tile_y = self._y // tile_dim
+        tile_w = screen_w // tile_dim + (self.VIEW_PADDING * 2)
+        tile_h = screen_h // tile_dim + (self.VIEW_PADDING * 2)
+
         sprites = []
         batch = pyglet.graphics.Batch()
 
-        for (cx, cy, v) in tilemap.get_points(x, y, w, h, skip_zero=False):
-            xdelta = cx - x
-            ydelta = cy - y
+        for (cx, cy, v) in tilemap.get_points(tile_x, tile_y, tile_w, tile_h, skip_zero=False):
+            xdelta = cx - tile_x
+            ydelta = cy - tile_y
             blitx = xdelta * tile_dim
             blity = screen_h - (tile_dim * (ydelta + 1))
             tile = tileidx[v]
