@@ -14,21 +14,21 @@ from logging import debug, info, warning, error
 import numpy as np
 import pyglet
 import pyglet.window.key as key
+import pyglet.window.mouse as mouse
 import pyglet.gl as gl
 
+from juice.config           import config
 from juice.gameview         import GameView
 from juice.heightmap        import Heightmap
 from juice.terrain          import Terrain
 from juice.terrainlayer     import \
     TerrainLayer, RiverLayer, SeaLayer, BiomeLayer, CityLayer
 from juice.tileclassifier   import TileClassifier
-from juice.tileset          import TileSet
 
-TILE_DIM        = 32
 GAME_WIDTH      = 1184
 GAME_HEIGHT     = 736
 TERRAIN_DIM     = 2**6
-DEBUG_EVENTS    = True
+DEBUG_EVENTS    = False
 
 _g = {}
 
@@ -105,9 +105,10 @@ def main():
     randseed = args.random_seed \
         if args.random_seed \
         else random.randint(1, 10000)
-        
-    w_tiles = GAME_WIDTH // TILE_DIM
-    h_tiles = GAME_HEIGHT // TILE_DIM
+    
+    tiledim = config.tiledim
+    w_tiles = GAME_WIDTH // tiledim
+    h_tiles = GAME_HEIGHT // tiledim
     
     window = pyglet.window.Window(GAME_WIDTH, GAME_HEIGHT)
     fps_display = pyglet.window.FPSDisplay(window)
@@ -140,31 +141,19 @@ def main():
 
     if (args.map):
         display_img = terr.get_map_imgdata(scaling=scaling)
-    else:
-        tileset = TileSet("assets/img/tileset.png", TILE_DIM)
-        view = GameView(terr, tileset)
-
-    def constrain_vpcoords(x, y):
-        dim = terr.dim
-        max_x = dim - w_tiles
-        max_y = dim - h_tiles
-        
-        if (x < 0): x = 0
-        elif (x > max_x): x = max_x
-        
-        if (y < 0): y = 0
-        elif (y > max_y): y = max_y
-            
-        return (x, y)
+    else:        
+        view = GameView(terr)
 
     @window.event
     def on_draw():
+        nonlocal viewport_x
+        nonlocal viewport_y
         window.clear()
         
         if (display_img):
             display_img.blit(0, 0)
         else:
-            view.blit(viewport_x, viewport_y, w_tiles, h_tiles)
+            (viewport_x, viewport_y) = view.blit(viewport_x, viewport_y)
         fps_display.draw()
     
     @window.event
@@ -173,15 +162,24 @@ def main():
         nonlocal viewport_y
         
         if (motion == key.MOTION_UP):
-            viewport_y -= 1
+            viewport_y -= tiledim
         elif (motion == key.MOTION_DOWN):
-            viewport_y += 1
+            viewport_y += tiledim
         elif (motion == key.MOTION_LEFT):
-            viewport_x -= 1
+            viewport_x -= tiledim
         elif (motion == key.MOTION_RIGHT):
-            viewport_x += 1
-            
-        (viewport_x, viewport_y) = constrain_vpcoords(viewport_x, viewport_y)
+            viewport_x += tiledim
+        
+    @window.event
+    def on_mouse_drag(x, y, dx, dy, button, mods):
+        nonlocal viewport_x
+        nonlocal viewport_y
+        
+        if (button != mouse.RIGHT):
+            return
+        
+        viewport_x -= dx
+        viewport_y += dy # pyglet has a reversed y-axis
 
     if (DEBUG_EVENTS):
         window.push_handlers(pyglet.window.event.WindowEventLogger())
