@@ -1,10 +1,13 @@
 
+import functools
+import itertools
 from warnings import warn
 
 import numpy as np
 import pyglet
 import pyglet.sprite
 import pyglet.graphics
+import pyglet.image
 
 from juice.terrainlayer     import TerrainLayer
 from juice.terrainlayerview import TerrainLayerView
@@ -80,7 +83,7 @@ class GameView:
             tile = tileidx[v]
 
             if (tile):
-                sprites.append(pyglet.sprite.Sprite(tile, x=blitx, y=blity, batch=batch))
+                sprites.append(pyglet.sprite.Sprite(tile.img, x=blitx, y=blity, batch=batch))
             
         return sprites
 
@@ -95,6 +98,7 @@ class GameView:
 
         dim = self._terrain.dim
         lviews = self._get_usable_layerviews()
+        layer_tiles = []
         tilefield = GameFieldLayer(dim, dtype=np.uint32)
         tileidx = {}
 
@@ -104,24 +108,35 @@ class GameView:
                 key += "{:02d}".format(i)
             return int(key)
 
-        for x in range(dim):
-            for y in range(dim):
-                tt_stack = []
+        for i in range(0, len(lviews)):
+            layer_tiles.append(lviews[i].get_tiles())
 
-                for lview in lviews:
-                    tilemap = lview.terrainlayer.classification
-                    tt_stack.append(tilemap.matrix[y, x])
+        for (x, y) in itertools.product(range(dim), range(dim)):
+            tt_stack = []
+            
+            # Get a stack of tile types (through layers) at the current
+            # coordinate, generate a tile index key.
 
-                tileidx_key = make_tileidx_key(tt_stack)
+            for lview in lviews:
+                tilemap = lview.terrainlayer.classification
+                tt_stack.append(tilemap.matrix[y, x])
 
-                if (tileidx_key not in tileidx):
+            tileidx_key = make_tileidx_key(tt_stack)
 
-                    # Not in index, construct the image
+            # If key not present in tile index, construct the tile.
+            
+            if (tileidx_key not in tileidx):
+                tile_stack = []
 
-                    tile = (lviews[0].get_tiles())[tt_stack[0]] # TODO: use all layers
-                    tileidx[tileidx_key] = tile
+                for i in range(0, len(lviews)):
+                    tile = layer_tiles[i][tt_stack[i]]
+                    if (tile):
+                        tile_stack.append(tile)
+                
+                composite = functools.reduce(lambda a, b: a.append(b), tile_stack)
+                tileidx[tileidx_key] = composite
 
-                tilefield.matrix[y, x] = tileidx_key
+            tilefield.matrix[y, x] = tileidx_key
 
         return (tileidx, tilefield)
 

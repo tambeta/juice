@@ -24,10 +24,11 @@ from juice.terrainlayer     import \
 from juice.tileclassifier   import TileClassifier
 from juice.tileset          import TileSet
 
-GAME_WIDTH = 832
-GAME_HEIGHT = 640
-TERRAIN_DIM = 2**6
-TILE_DIM = 32
+TILE_DIM        = 32
+GAME_WIDTH      = 1184
+GAME_HEIGHT     = 736
+TERRAIN_DIM     = 2**6
+DEBUG_EVENTS    = True
 
 _g = {}
 
@@ -104,12 +105,12 @@ def main():
     randseed = args.random_seed \
         if args.random_seed \
         else random.randint(1, 10000)
-    
-    scaling = min(GAME_WIDTH, GAME_HEIGHT) // TERRAIN_DIM
+        
     w_tiles = GAME_WIDTH // TILE_DIM
     h_tiles = GAME_HEIGHT // TILE_DIM
     
     window = pyglet.window.Window(GAME_WIDTH, GAME_HEIGHT)
+    fps_display = pyglet.window.FPSDisplay(window)
     terr = None
     view = None
     display_img = None
@@ -118,9 +119,6 @@ def main():
     viewport_y = 0
     np.set_printoptions(threshold=float("nan"))
     setup_logging(args.log_level)
-    
-    info("random seed: %d", randseed)
-    info("scaling: %d", scaling)
 
     pyglet.gl.glEnable(gl.GL_BLEND)
     pyglet.gl.glBlendFunc(pyglet.gl.GL_SRC_ALPHA, pyglet.gl.GL_ONE_MINUS_SRC_ALPHA)
@@ -133,14 +131,18 @@ def main():
         info("Loading map from `{}`".format(args.load))
         terr = load_state(args.load)
     
+    scaling = min(GAME_WIDTH, GAME_HEIGHT) // terr.dim
+    info("random seed: %d", randseed)
+    info("scaling: %d", scaling)
+        
     if (args.timing):
         sys.exit(0)
 
     if (args.map):
         display_img = terr.get_map_imgdata(scaling=scaling)
-    
-    tileset = TileSet("assets/img/tileset.png", TILE_DIM)
-    view = GameView(terr, tileset)
+    else:
+        tileset = TileSet("assets/img/tileset.png", TILE_DIM)
+        view = GameView(terr, tileset)
 
     def constrain_vpcoords(x, y):
         dim = terr.dim
@@ -163,6 +165,7 @@ def main():
             display_img.blit(0, 0)
         else:
             view.blit(viewport_x, viewport_y, w_tiles, h_tiles)
+        fps_display.draw()
     
     @window.event
     def on_text_motion(motion):
@@ -180,7 +183,8 @@ def main():
             
         (viewport_x, viewport_y) = constrain_vpcoords(viewport_x, viewport_y)
 
-    #window.push_handlers(pyglet.window.event.WindowEventLogger())
+    if (DEBUG_EVENTS):
+        window.push_handlers(pyglet.window.event.WindowEventLogger())
     pyglet.app.run()
 
 main()
