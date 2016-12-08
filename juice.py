@@ -13,22 +13,20 @@ from logging import debug, info, warning, error
 
 import numpy as np
 import pyglet
-import pyglet.window.key as key
-import pyglet.window.mouse as mouse
 import pyglet.gl as gl
 
 from juice.config           import config
 from juice.gameview         import GameView
-from juice.heightmap        import Heightmap
 from juice.terrain          import Terrain
 from juice.terrainlayer     import \
     TerrainLayer, RiverLayer, SeaLayer, BiomeLayer, CityLayer
-from juice.tileclassifier   import TileClassifier
+from juice.window           import Window
 
 GAME_WIDTH      = 1184
 GAME_HEIGHT     = 736
 TERRAIN_DIM     = 2**6
 DEBUG_EVENTS    = False
+DEBUG_GL        = False
 
 _g = {}
 
@@ -79,6 +77,17 @@ def setup_logging(loglevel_str):
     
     logging.basicConfig(level=loglevel, format=logformat, handlers=[handler])
 
+def setup_misc():
+
+    """ Miscellaneous global setup tasks. """
+    
+    if (not DEBUG_GL):
+        pyglet.options['debug_gl'] = False
+        
+    np.set_printoptions(threshold=float("nan"))
+    pyglet.gl.glEnable(gl.GL_BLEND)
+    pyglet.gl.glBlendFunc(pyglet.gl.GL_SRC_ALPHA, pyglet.gl.GL_ONE_MINUS_SRC_ALPHA)
+
 def save_state(obj, fn):
     f = open(fn, "wb")
     pickle.dump(obj, f)
@@ -105,24 +114,11 @@ def main():
     randseed = args.random_seed \
         if args.random_seed \
         else random.randint(1, 10000)
-    
-    tiledim = config.tiledim
-    w_tiles = GAME_WIDTH // tiledim
-    h_tiles = GAME_HEIGHT // tiledim
-    
-    window = pyglet.window.Window(GAME_WIDTH, GAME_HEIGHT)
-    fps_display = pyglet.window.FPSDisplay(window)
-    terr = None
-    view = None
-    display_img = None
+    window = Window(GAME_WIDTH, GAME_HEIGHT)
 
-    viewport_x = 0
-    viewport_y = 0
-    np.set_printoptions(threshold=float("nan"))
+    setup_misc()
     setup_logging(args.log_level)
-
-    pyglet.gl.glEnable(gl.GL_BLEND)
-    pyglet.gl.glBlendFunc(pyglet.gl.GL_SRC_ALPHA, pyglet.gl.GL_ONE_MINUS_SRC_ALPHA)
+    info("random seed: %d", randseed)
 
     if (not args.load):
         terr = generate(randseed)
@@ -131,58 +127,17 @@ def main():
     else:
         info("Loading map from `{}`".format(args.load))
         terr = load_state(args.load)
-    
-    scaling = min(GAME_WIDTH, GAME_HEIGHT) // terr.dim
-    info("random seed: %d", randseed)
-    info("scaling: %d", scaling)
         
     if (args.timing):
         sys.exit(0)
-
-    if (args.map):
-        display_img = terr.get_map_imgdata(scaling=scaling)
-    else:        
-        view = GameView(terr)
-
-    @window.event
-    def on_draw():
-        nonlocal viewport_x
-        nonlocal viewport_y
-        window.clear()
-        
-        if (display_img):
-            display_img.blit(0, 0)
-        else:
-            (viewport_x, viewport_y) = view.blit(viewport_x, viewport_y)
-        fps_display.draw()
-    
-    @window.event
-    def on_text_motion(motion):
-        nonlocal viewport_x
-        nonlocal viewport_y
-        
-        if (motion == key.MOTION_UP):
-            viewport_y -= tiledim
-        elif (motion == key.MOTION_DOWN):
-            viewport_y += tiledim
-        elif (motion == key.MOTION_LEFT):
-            viewport_x -= tiledim
-        elif (motion == key.MOTION_RIGHT):
-            viewport_x += tiledim
-        
-    @window.event
-    def on_mouse_drag(x, y, dx, dy, button, mods):
-        nonlocal viewport_x
-        nonlocal viewport_y
-        
-        if (button != mouse.RIGHT):
-            return
-        
-        viewport_x -= dx
-        viewport_y += dy # pyglet has a reversed y-axis
-
     if (DEBUG_EVENTS):
         window.push_handlers(pyglet.window.event.WindowEventLogger())
+    
+    if (args.map):
+        window.image = terr.get_map_imgdata(scaling=min(GAME_WIDTH, GAME_HEIGHT) // terr.dim)
+    else:      
+        window.gameview = GameView(terr)
+
     pyglet.app.run()
 
 main()

@@ -51,6 +51,8 @@ class GameView:
         tiledim = tileset.tiledim
         dim = terrain.dim
         
+        self.tileset = tileset
+        
         self._screenbuf = screenbuf
         self._tiledim = tiledim
         self._terrain = terrain
