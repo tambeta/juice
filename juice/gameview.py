@@ -127,7 +127,7 @@ class GameView:
                     if (tx < 0 or ty < 0 or tx >= dim or ty >= dim):
                         continue
 
-                    s.image = tileidx[tilemap.matrix[ty, tx]].img
+                    s.image = tileidx[tilemap[tx, ty]].img
 
             self._x = x
             self._y = y
@@ -170,7 +170,7 @@ class GameView:
 
             for lview in lviews:
                 tilemap = lview.terrainlayer.classification
-                tt_stack.append(tilemap.matrix[y, x])
+                tt_stack.append(tilemap[x, y])
 
             tileidx_key = make_tileidx_key(tt_stack)
 
@@ -188,7 +188,7 @@ class GameView:
                 composite = functools.reduce(lambda a, b: a.append(b), tile_stack)
                 tileidx[tileidx_key] = composite
 
-            tilefield.matrix[y, x] = tileidx_key
+            tilefield[x, y] = tileidx_key
 
         return (tileidx, tilefield)
 

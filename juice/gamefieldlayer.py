@@ -5,9 +5,7 @@ import scipy.ndimage as ndi
 class GameFieldLayer:
 
     """ A class representing any matrix associated with the game field.
-    Notably subclassed by TerrainLayer.
-    
-    TODO: direct assignment / access via []
+    Notably subclassed by TerrainLayer. Accessible via [].
     """
 
     def __init__(self, matrix_or_dim, fill=0, dtype=np.uint8):
@@ -118,3 +116,15 @@ class GameFieldLayer:
                     matrix[label_indices] = 0
 
         return (matrix, n_labels)
+    
+    def __getitem__(self, i):
+        
+        """ Note the use of game coordinates (translated to numpy coords). """
+        
+        return self.matrix[i[1], i[0]]
+    
+    def __setitem__(self, i, v):
+    
+        """ Note the use of game coordinates (translated to numpy coords). """
+    
+        self.matrix[i[1], i[0]] = v
