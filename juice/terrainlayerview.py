@@ -67,7 +67,14 @@ class _SeaLayerView(TerrainLayerView):
         }
 
 class _RiverLayerView(TerrainLayerView):
-    pass
+    @functools.lru_cache()
+    def get_tiles(self):
+        tileset = self._tileset
+
+        return {
+            TileClassifier.TT_EMPTY         : None,
+            TileClassifier.TT_SOLID         : tileset.get_tile(28, 5),
+        }
 
 class _BiomeLayerView(TerrainLayerView):
     @functools.lru_cache()

@@ -31,10 +31,10 @@ class TerrainLayer(GameFieldLayer, metaclass=abc.ABCMeta):
         self.matrix = None
         self.terrain = None
         self.classification = None
-        
+
         self._require = None
         self._randseed = randseed
-        self._generate = self.generate        
+        self._generate = self.generate
         self.generate = self._check_requirements
 
         random.seed(randseed)
@@ -75,37 +75,43 @@ class TerrainLayer(GameFieldLayer, metaclass=abc.ABCMeta):
             self.matrix = None
             raise e
 
-    def normalized(fn):
+    def classified(fn):
 
         """ Decorator for generate methods. Applies tile classification /
         normalization after generation and stores it in the `classification`
-        attribute. Object's normalize_rev attribute controls TileClassifier's
-        rev option.
+        attribute. Object's classify_rev attribute controls TileClassifier's rev
+        option. If the object has a `_classify` method, it is invoked to
+        retrieve a classification; otherwise TileClassifier is used.
         """
-        
+
         @functools.wraps(fn)
         def wrapped(tlayer):
             try:
-                rev = tlayer.normalize_rev
+                rev = tlayer.classify_rev
             except AttributeError:
                 rev = False
 
             fn(tlayer)
-            tlayer.classification = TileClassifier(tlayer, rev=rev).classify()
+
+            try:
+                cx = tlayer._classify()
+            except AttributeError:
+                cx = TileClassifier(tlayer, rev=rev).classify()
+            tlayer.classification = cx
 
         return wrapped
 
 class SeaLayer(TerrainLayer):
-    
+
     """ NOTE: SeaLayer classification is currently reversed, i.e. represents
     the ground.
     """
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.normalize_rev = True
+        self.classify_rev = True
 
-    @TerrainLayer.normalized
+    @TerrainLayer.classified
     def generate(self):
 
         """ Generate the sea layer based on sea threshold. Disallow seas
@@ -124,6 +130,7 @@ class RiverLayer(TerrainLayer):
         super().__init__(*args, **kwargs)
         self._require = (SeaLayer,)
 
+    @TerrainLayer.classified
     def generate(self):
 
         """ Generate the river system based on terrain's heightmap. Rivers flow
@@ -252,18 +259,27 @@ class RiverLayer(TerrainLayer):
         self.foreach_edge_neighbor(have_other_river_nbrs, x, y)
         return is_converging
 
+    def _classify(self):
+
+        """ Custom classifier for the river layer. """
+
+        cxion = GameFieldLayer(self.terrain.dim)
+        cxion.matrix = \
+            np.where(self.matrix > 0, TileClassifier.TT_SOLID, TileClassifier.TT_EMPTY)
+        return cxion
+
 class BiomeLayer(TerrainLayer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._require = (SeaLayer, RiverLayer)
 
-    @TerrainLayer.normalized
+    @TerrainLayer.classified
     def generate(self):
 
         """ Biomes are generated based on the heightmap, allowed in intermediate
         heights between sea and mountains. Contiguous biome segments are
         assigned a random ID (desert or forest). Note that MIN_BIOME_SIZE is
-        enforced _before_ normalization.
+        enforced _before_ classification / normalization.
         """
 
         terrain = self.terrain
@@ -383,7 +399,7 @@ class CityLayer(TerrainLayer):
 
         """ After layer generation, iterate over cities pair-wise and remove one
         in every pair whose distance is lower than a threshold.
-        
+
         TODO: possibly use convolution for a massive speedup.
         """
 
