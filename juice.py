@@ -26,7 +26,7 @@ GAME_WIDTH      = 1184
 GAME_HEIGHT     = 736
 TERRAIN_DIM     = 2**6
 DEBUG_EVENTS    = False
-DEBUG_GL        = False
+DEBUG_GL        = True
 
 _g = {}
 

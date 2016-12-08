@@ -63,7 +63,20 @@ class _GameViewWindow(Window):
             self._viewport_x -= self._tiledim
         elif (motion == key.MOTION_RIGHT):
             self._viewport_x += self._tiledim
+    
+    def on_mouse_release(self, x, y, button, mods):
+        if (button != mouse.LEFT):
+            return
         
+        gv = self._gameview
+        terrain = gv.terrain
+        (tx, ty) = gv.get_tile_coords(x, y)
+        istr = ""
+        
+        for tlayer in terrain.get_layers():
+            istr += type(tlayer).__name__ + ": " + str(tlayer[tx, ty]) + "\t"
+        print("x:", tx, "y:", ty, istr)
+    
     def on_mouse_drag(self, x, y, dx, dy, button, mods):
         if (button != mouse.RIGHT):
             return

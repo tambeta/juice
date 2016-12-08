@@ -52,10 +52,10 @@ class GameView:
         dim = terrain.dim
         
         self.tileset = tileset
+        self.terrain = terrain
         
         self._screenbuf = screenbuf
         self._tiledim = tiledim
-        self._terrain = terrain
         self._layerviews = []
 
         self._x = x
@@ -82,7 +82,7 @@ class GameView:
         tilemap = self._tilemap
         sprites = self._sprites
         padding = self.VIEW_PADDING
-        dim = self._terrain.dim
+        dim = self.terrain.dim
 
         old_x = self._x
         old_y = self._y
@@ -138,6 +138,20 @@ class GameView:
     def blit_delta(self, dx, dy):
         return self.blit(self._x + dx, self._y + dy)
 
+    def get_tile_coords(self, x, y):
+        
+        """ Get the game tile coordinates from _pyglet_ viewpoint
+        coordinates.
+        """
+        
+        gpx = self._x
+        gpy = self._y
+        vph = self._screenbuf.height
+        
+        rx = (gpx + x) // self._tiledim
+        ry = (gpy - y + vph) // self._tiledim
+        return (rx, ry)
+
     def _construct_tilemap(self):
 
         """ Construct a tile field containing references into the tile
@@ -147,7 +161,7 @@ class GameView:
         image for the tile.
         """
 
-        dim = self._terrain.dim
+        dim = self.terrain.dim
         lviews = self._get_usable_layerviews()
         layer_tiles = []
         tilefield = GameFieldLayer(dim, dtype=np.uint32)
