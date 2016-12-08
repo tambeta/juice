@@ -33,6 +33,11 @@ class GameView:
     (viewport) coordinates. Invalidated sprites (those outside of the padded
     viewport) are recycled with new tile graphics to the opposite side of
     the viewport.
+    
+    Note on coordinates: Game coordinates have x, y originating in the upper
+    left corner. Pyglet coordinates have x, y originating in the lower left
+    corner. The former are used as extensively as possible, converting to
+    the latter only before calls to pyglet.
     """
 
     VIEW_PADDING = 1
@@ -44,7 +49,8 @@ class GameView:
         screenbuf = pyglet.image.get_buffer_manager().get_color_buffer()
         tileset = TileSet(config.tileset, config.tiledim)
         tiledim = tileset.tiledim
-
+        dim = terrain.dim
+        
         self._screenbuf = screenbuf
         self._tiledim = tiledim
         self._terrain = terrain
@@ -52,8 +58,8 @@ class GameView:
 
         self._x = x
         self._y = y
-        self._max_x = terrain.dim * (tiledim - 1)
-        self._max_y = self._max_x
+        self._max_x = dim * tiledim - screenbuf.width
+        self._max_y = dim * tiledim - screenbuf.height
 
         for tl in terrain.get_layers():
             self._layerviews.append(TerrainLayerView(tl, tileset))
@@ -74,6 +80,7 @@ class GameView:
         tilemap = self._tilemap
         sprites = self._sprites
         padding = self.VIEW_PADDING
+        dim = self._terrain.dim
 
         old_x = self._x
         old_y = self._y
@@ -96,6 +103,7 @@ class GameView:
             max_sy = vph + padding_px - 1
             min_sx = -tiledim - padding_px + 1
             min_sy = min_sx
+            pyglet_y = y + vph - tiledim
 
             for s in sprites:
                 s.x -= dx
@@ -112,7 +120,10 @@ class GameView:
                     elif (s.y > max_sy): s.y -= vph_padded
 
                     tx = (x + s.x) // tiledim
-                    ty = (y + (vph - s.y - tiledim)) // tiledim
+                    ty = (pyglet_y - s.y) // tiledim
+                    
+                    if (tx < 0 or ty < 0 or tx >= dim or ty >= dim):
+                        continue
 
                     s.image = tileidx[tilemap.matrix[ty, tx]].img
 
