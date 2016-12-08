@@ -114,7 +114,7 @@ def main():
     randseed = args.random_seed \
         if args.random_seed \
         else random.randint(1, 10000)
-    window = Window(GAME_WIDTH, GAME_HEIGHT)
+    window = Window(GAME_WIDTH, GAME_HEIGHT, caption="Juice")
 
     setup_misc()
     setup_logging(args.log_level)
