@@ -1,8 +1,12 @@
 
 # geany: ts=4
 
-from PIL import Image
+import itertools
+
+from PIL import Image, ImageDraw
 from pyglet import resource, image
+
+from juice.config import config
 
 class Tile:
 
@@ -25,13 +29,10 @@ class Tile:
 
         """ Get a composite of two tiles; return the new tile """
 
-        imagedata = image.ImageData(self._w, self._h, "RGBA", self._pitch)
-        comp = Image.alpha_composite(self.get_pil_img(), other.get_pil_img())
+        comp = Image.alpha_composite(self._get_pil_img(), other._get_pil_img())
+        return Tile(self._get_pyglet_img(comp))
 
-        imagedata.set_data("RGBA", self._pitch, comp.tobytes())
-        return Tile(imagedata)
-
-    def get_pil_img(self):
+    def _get_pil_img(self):
 
         """ Return a PIL Image. """
 
@@ -39,10 +40,52 @@ class Tile:
         raw_bytes = imagedata.get_data("RGBA", self._pitch)
 
         return Image.frombytes("RGBA", (self._w, self._h), raw_bytes)
+        
+    def _get_pyglet_img(self, pimg=None):
+        
+        """ Return a pyglet.image.ImageData converted from a passed PIL
+        image, or an empty ImageData if none passed.
+        """
+        
+        imagedata = image.ImageData(self._w, self._h, "RGBA", self._pitch)
+        
+        if (pimg):
+            imagedata.set_data("RGBA", self._pitch, pimg.tobytes())        
+        return imagedata
 
-class PlaceholderTile:
-    def __init__(self):
-        pass
+class PlaceholderTile(Tile):
+    
+    """ A tile not read from a tileset, but generated on the fly based on a
+    simple layout specification. The layout is expected to be a sequence of
+    sequences which are all of the same length, representing a square
+    matrix. The tile is sectioned into a grid with each segment representing
+    an element in the matrix. The segments corresponding to elements
+    evaluating to true are filled with the passed color.
+    """
+    
+    def __init__(self, layout=None, color="black"):
+        tiledim = config.tiledim
+        pimg = Image.new("RGBA", (tiledim, tiledim))
+        
+        self._w = tiledim
+        self._h = tiledim
+        self._pitch = tiledim * 4
+        
+        if (layout):
+            self._construct_tile(pimg, layout, color)
+        
+        self.img = self._get_pyglet_img(pimg)
+
+    def _construct_tile(self, pimg, layout, color):
+        draw = ImageDraw.Draw(pimg)
+        lo_dim = len(layout[0])
+        el_dim = self._w / lo_dim
+        
+        for (y, x) in itertools.product(range(lo_dim), range(lo_dim)):
+            if (layout[y][x]):
+                px = x * el_dim
+                py = y * el_dim
+                draw.rectangle((px, py, px+el_dim-1, py+el_dim-1), color)
 
 class TileSet:
 
