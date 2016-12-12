@@ -1,4 +1,6 @@
 
+# geany: ts=4
+
 from PIL import Image
 from pyglet import resource, image
 
@@ -37,6 +39,10 @@ class Tile:
         raw_bytes = imagedata.get_data("RGBA", self._pitch)
 
         return Image.frombytes("RGBA", (self._w, self._h), raw_bytes)
+
+class PlaceholderTile:
+    def __init__(self):
+        pass
 
 class TileSet:
 

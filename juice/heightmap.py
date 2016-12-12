@@ -1,4 +1,6 @@
 
+# geany: ts=4
+
 import array
 import random
 
@@ -71,12 +73,12 @@ class Heightmap:
 
         if (square_dim > 2):
             self._approximate_to_squaredim(square_dim, rand_range, True)
-        
+
         self.matrix = t[0:dim, 0:dim].copy(order="C")
         self._stretch_levels()
         self._apply_noise()
         self._apply_blur()
-        
+
         return self.matrix
 
     def _apply_noise(self):
@@ -84,30 +86,30 @@ class Heightmap:
         nrange = self.noise_range
         halfrange = nrange // 2
         it = np.nditer(matrix, flags=["multi_index"])
-        
+
         if (nrange <= 0):
             return
-            
+
         while (not it.finished):
-            v = int(it[0])            
+            v = int(it[0])
             p = it.multi_index
-            
+
             v = randint(v-halfrange, v+halfrange)
             matrix[p] = max(0, min(v, 255))
             it.iternext()
-            
+
     def _apply_blur(self):
         matrix = self.matrix
         sigma = self.blur_sigma
-        
+
         if (sigma <= 0):
             return
         self.matrix = ndimage.filters.gaussian_filter(matrix, sigma=sigma)
 
     def _approximate_to_squaredim(self, square_dim, rand_range, fill=False):
-        
+
         # Helper routine to approximate the height map down to square_dim
-        
+
         x = 0
         y = 0
         dim = self._dim
@@ -198,31 +200,19 @@ class Heightmap:
 
     def _stretch_levels(self):
 
-        """
-        Stretch the levels so that the lowest value would be 0 and the
-        highest at 255. TODO: numpy-ify this.
+        """ Stretch the levels so that the lowest value would be 0 and the
+        highest at 255.
         """
 
         t = self.matrix
-        maxv = 0
-        minv = 255
+        maxv = np.max(t)
+        minv = np.min(t)
+        scale = 255 / (maxv - minv)
 
-        for col in t:
-            curr_max = max(col)
-            curr_min = min(col)
+        if (minv == 0 and maxv == 255):
+            return
 
-            if (curr_max > maxv):
-                maxv = curr_max
-            if (curr_min < minv):
-                minv = curr_min
-
-        if (minv > 0 or maxv < 255):
-            scale = 255 / (maxv - minv)
-
-            for x in range(self._dim):
-                for y in range(self._dim):
-                    v = t[x, y]
-                    t[x, y] = int((v - minv) * scale)
+        self.matrix = ((t - minv) * scale).astype(np.uint8)
 
     def _assert_dim(self):
 
