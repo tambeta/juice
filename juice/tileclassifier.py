@@ -1,10 +1,13 @@
 
 import abc
+import collections
 
 import numpy as np
 
 from logging import debug, info, warning, error
 from juice.gamefieldlayer import GameFieldLayer
+
+_TileSpec = collections.namedtuple("TileSpec", ["array", "initial_tt", "rotations"])
 
 class TileClassifier(metaclass=abc.ABCMeta):
     
@@ -15,7 +18,28 @@ class TileClassifier(metaclass=abc.ABCMeta):
     solid or straight, convex and concave edge tiles. The second is
     TileClassifierLine for layers of line objects, e.g. rivers.
     """
-    
+
+    TT_EMPTY        = 0
+    TT_NA           = 1
+
+    def __init__(self, flayer, rev=False):
+
+        """ Constructor. cls_matrix is a matrix representing "interesting" (the
+        terrain) and "uninteresting" tiles at first (a boolean matrix), later
+        filled with tile type IDs. By default, all nonzero values are considered
+        interesting. Passing true for rev reverses this condition.
+        """
+
+        assert(self.TT_EMPTY == 0)
+
+        cm = np.full(flayer.matrix.shape, self.TT_EMPTY, dtype=np.uint8)
+        cm[flayer.matrix == 0 if rev else flayer.matrix != 0] = self.TT_NA
+
+        self._cls_matrix = cm
+        self._flayer = flayer
+        self._dim = flayer.matrix.shape[0]
+        self._rev = rev
+
     @abc.abstractmethod
     def classify(self, tilespec_lists):
         
@@ -36,25 +60,7 @@ class TileClassifier(metaclass=abc.ABCMeta):
                 break
         
         return GameFieldLayer(m)
-        
-    def __init__(self, flayer, rev=False):
 
-        """ Constructor. cls_matrix is a matrix representing "interesting" (the
-        terrain) and "uninteresting" tiles at first (a boolean matrix), later
-        filled with tile type IDs. By default, all nonzero values are considered
-        interesting. Passing true for rev reverses this condition.
-        """
-
-        assert(self.TT_EMPTY == 0)
-
-        cm = np.full(flayer.matrix.shape, self.TT_EMPTY, dtype=np.uint8)
-        cm[flayer.matrix == 0 if rev else flayer.matrix != 0] = self.TT_NA
-
-        self._cls_matrix = cm
-        self._flayer = flayer
-        self._dim = flayer.matrix.shape[0]
-        self._rev = rev
-        
     def _apply_tilespecs(self, m, *tilespecs):
 
         """ Apply a list of tilespecs, i.e. remove illegal tiles. """
@@ -64,18 +70,9 @@ class TileClassifier(metaclass=abc.ABCMeta):
         mask = np.full((dim, dim), True, dtype=bool)
 
         for tilespec in (tilespecs):
-            initial_tt = None
-
-            if (np.equal(tilespec, self.TS_STRAIGHT).all()):
-                initial_tt = self.TT_STRAIGHT_N
-            elif (np.equal(tilespec, self.TS_CONCAVE).all()):
-                initial_tt = self.TT_CONCAVE_NE
-            elif (np.equal(tilespec, self.TS_CONVEX).all()):
-                initial_tt = self.TT_CONVEX_NE
-
             for x in range(1, dim+1):
                 for y in range(1, dim+1):
-                    cls = self._classify_tile(ext_m, mask, x, y, tilespec, initial_tt)
+                    cls = self._classify_tile(ext_m, mask, x, y, tilespec)
                     if (type(cls) is bool):
                         mask[y-1, x-1] = cls
                     elif (type(cls) is int):
@@ -83,41 +80,44 @@ class TileClassifier(metaclass=abc.ABCMeta):
                         m[y-1, x-1] = cls
                     elif (cls is not None):
                         raise ValueError(cls)
-
+        
         m[mask] = False
         self._flayer.matrix[mask] = (0xFE if self._rev else 0)
 
         return np.count_nonzero(mask)
 
-    def _classify_tile(self, m, mask, x, y, tilespec, initial_tt):
+    def _classify_tile(self, m, mask, x, y, tilespec):
 
         """ Classify a single tile. tilespec may be a valid ternary matrix which
         is rotated into all possible positions and compared with the tile's
         immediate neighborhood _or_ a callable. Returns a TT _or_ a boolean
         affecting only the mask _or_ None for no effect at all.
         """
-
-        nhood = m[y-1:y+2, x-1:x+2]
+        
+        nhood = m[y-1:y+2, x-1:x+2]        
         i = 0
 
         if (not mask[y-1, x-1]):            # already classed as OK, return
             return False
         elif (m[y, x] == self.TT_EMPTY):    # non-interesting tile is OK, return
             return False
-        elif (nhood.all() > self.TT_EMPTY): # interior terrain tile is OK, return
-            return self.TT_SOLID
+        elif (type(self) is TileClassifierSolid and nhood.all() > self.TT_EMPTY):
+            return self.TT_SOLID            # interior terrain tile is OK, return
 
         if (callable(tilespec)):
             return tilespec(m, x, y, nhood)
 
         # Test tilespec at 4 rotations at most
 
-        nhood_bool = nhood > self.TT_EMPTY
-
-        while (i < 4):
-            if (self._is_ternary_matrix_equal(tilespec, nhood_bool)):
+        nhood_bool  = nhood > self.TT_EMPTY
+        initial_tt  = tilespec.initial_tt
+        rotations   = tilespec.rotations or 4
+        ts_matrix   = tilespec.array
+        
+        while (i < rotations):
+            if (self._is_ternary_matrix_equal(ts_matrix, nhood_bool)):
                 return initial_tt + i
-            tilespec = self._rotate_matrix(tilespec)
+            ts_matrix = self._rotate_matrix(ts_matrix)
             i += 1
 
     def _rotate_matrix(self, m):
@@ -164,25 +164,10 @@ class TileClassifier(metaclass=abc.ABCMeta):
         return m
     
 class TileClassifierSolid(TileClassifier):
-
-    TS_CONCAVE  = np.array([
-        [True, True, True],
-        [True, True, True],
-        [False, True, True]])
-    TS_CONVEX   = np.array([
-        [None, False, None],
-        [True, True, False],
-        [True, True, None]])
-    TS_STRAIGHT   = np.array([
-        [None, False, None],
-        [True, True, True],
-        [True, True, True]])
-
+    
     # Note: Rotated variations of the same types are expected to be
     # successive integers.
 
-    TT_EMPTY        = 0
-    TT_NA           = 1
     TT_SOLID        = 2
 
     TT_CONCAVE_NE   = 11
@@ -199,6 +184,19 @@ class TileClassifierSolid(TileClassifier):
     TT_STRAIGHT_E   = 20
     TT_STRAIGHT_S   = 21
     TT_STRAIGHT_W   = 22
+
+    TS_CONCAVE  = _TileSpec._make((np.array([
+        [True, True, True],
+        [True, True, True],
+        [False, True, True]]), TT_CONCAVE_NE, None))
+    TS_CONVEX   = _TileSpec._make((np.array([
+        [None, False, None],
+        [True, True, False],
+        [True, True, None]]), TT_CONVEX_NE, None))
+    TS_STRAIGHT   = _TileSpec._make((np.array([
+        [None, False, None],
+        [True, True, True],
+        [True, True, True]]), TT_STRAIGHT_N, None))
 
     def classify(self):
 
@@ -218,3 +216,50 @@ class TileClassifierSolid(TileClassifier):
 
         return super().classify(
             ((sliver_spec,), (self.TS_CONCAVE, self.TS_CONVEX, self.TS_STRAIGHT)))
+
+class TileClassifierLine(TileClassifier):
+    
+    TT_STRAIGHT_NS   = 11
+    TT_STRAIGHT_WE   = 12
+    
+    TT_SOURCE_N      = 15
+    TT_SOURCE_E      = 16
+    TT_SOURCE_S      = 17
+    TT_SOURCE_W      = 18
+    
+    TT_CORNER_NE     = 21
+    TT_CORNER_SE     = 22
+    TT_CORNER_SW     = 23
+    TT_CORNER_NW     = 24
+    
+    TT_TBONE_N       = 31
+    TT_TBONE_E       = 32
+    TT_TBONE_S       = 33
+    TT_TBONE_W       = 34
+    
+    TT_FOURWAY       = 41
+    
+    TS_STRAIGHT  = _TileSpec._make((np.array([
+        [None,  True,  None],
+        [False, True,  False],
+        [None,  True,  None]]), TT_STRAIGHT_NS, 2))
+    TS_SOURCE   = _TileSpec._make((np.array([
+        [None,  True,  None],
+        [False, True,  False],
+        [None,  None,  None]]), TT_SOURCE_N, 4))
+    TS_CORNER   = _TileSpec._make((np.array([
+        [None,  True,  None],
+        [False, True,  True],
+        [None,  False, None]]), TT_CORNER_NE, 4))
+    TS_TBONE    = _TileSpec._make((np.array([
+        [None,  True,  None],
+        [True,  True,  True],
+        [None,  False, None]]), TT_TBONE_N, 4))
+    TS_FOURWAY  = _TileSpec._make((np.array([
+        [None,  True,  None],
+        [True,  True,  True],
+        [None,  True,  None]]), TT_FOURWAY, 1))
+    
+    def classify(self):
+        return super().classify(
+            ((self.TS_STRAIGHT, self.TS_SOURCE, self.TS_CORNER, self.TS_TBONE, self.TS_FOURWAY),))        

@@ -4,7 +4,7 @@ import re
 
 from juice.terrainlayer     import \
     TerrainLayer, SeaLayer, BiomeLayer
-from juice.tileclassifier   import TileClassifierSolid
+from juice.tileclassifier   import TileClassifierSolid, TileClassifierLine
 from juice.tileset          import PlaceholderTile
 
 class TerrainLayerView:
@@ -73,10 +73,10 @@ class _RiverLayerView(TerrainLayerView):
         tileset = self._tileset
 
         return {
-            TileClassifierSolid.TT_EMPTY         : None,
-            TileClassifierSolid.TT_SOLID         : PlaceholderTile(color="#03e", layout=(
+            TileClassifierSolid.TT_EMPTY        : None,
+            TileClassifierLine.TT_STRAIGHT_NS   : PlaceholderTile(color="#03e", layout=(
                 (0, 1, 0), 
-                (1, 1, 1), 
+                (0, 1, 0), 
                 (0, 1, 0)
             )),
         }

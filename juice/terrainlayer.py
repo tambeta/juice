@@ -9,7 +9,7 @@ import scipy.signal
 
 from juice.heightmap        import Heightmap
 from juice.gamefieldlayer   import GameFieldLayer
-from juice.tileclassifier   import TileClassifierSolid
+from juice.tileclassifier   import TileClassifierSolid, TileClassifierLine
 
 class RequirementError(Exception):
     pass
@@ -80,8 +80,8 @@ class TerrainLayer(GameFieldLayer, metaclass=abc.ABCMeta):
         """ Decorator for generate methods. Applies tile classification /
         normalization after generation and stores it in the `classification`
         attribute. Object's classify_rev attribute controls TileClassifier's rev
-        option. If the object has a `_classify` method, it is invoked to
-        retrieve a classification; otherwise TileClassifier is used.
+        option. The classifier attribute specifies the TileClassifier subclass,
+        by default TileClassifierSolid is used.
         """
 
         @functools.wraps(fn)
@@ -90,13 +90,15 @@ class TerrainLayer(GameFieldLayer, metaclass=abc.ABCMeta):
                 rev = tlayer.classify_rev
             except AttributeError:
                 rev = False
+                
+            try:
+                cfier = tlayer.classifier
+            except AttributeError:
+                cfier = TileClassifierSolid
 
             fn(tlayer)
 
-            try:
-                cx = tlayer._classify()
-            except AttributeError:
-                cx = TileClassifierSolid(tlayer, rev=rev).classify()
+            cx = cfier(tlayer, rev=rev).classify()
             tlayer.classification = cx
 
         return wrapped
@@ -129,6 +131,7 @@ class RiverLayer(TerrainLayer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._require = (SeaLayer,)
+        self.classifier = TileClassifierLine
 
     @TerrainLayer.classified
     def generate(self):
@@ -259,15 +262,6 @@ class RiverLayer(TerrainLayer):
 
         self.foreach_edge_neighbor(have_other_river_nbrs, x, y)
         return is_converging
-
-    def _classify(self):
-
-        """ Custom classifier for the river layer. """
-
-        cxion = GameFieldLayer(self.terrain.dim)
-        cxion.matrix = \
-            np.where(self.matrix > 0, TileClassifierSolid.TT_SOLID, TileClassifierSolid.TT_EMPTY)
-        return cxion
 
 class BiomeLayer(TerrainLayer):
     def __init__(self, *args, **kwargs):
