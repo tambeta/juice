@@ -1,51 +1,42 @@
 
+import abc
+
 import numpy as np
 
 from logging import debug, info, warning, error
 from juice.gamefieldlayer import GameFieldLayer
 
-class TileClassifier:
-
-    """ A class for converting a GameFieldLayer into the space of possible
-    tiles of the standard tileset and removing illegal tiles, thereby
-    normalizing the field.
+class TileClassifier(metaclass=abc.ABCMeta):
+    
+    """ Subclasses of TileClassifier convert a GameFieldLayer into the space
+    of possible tiles of the standard tileset and removing illegal tiles,
+    thereby normalizing the field. The first variation is
+    TileClassifierSolid for layers of expansive segments represented by
+    solid or straight, convex and concave edge tiles. The second is
+    TileClassifierLine for layers of line objects, e.g. rivers.
     """
-
-    TS_CONCAVE  = np.array([
-        [True, True, True],
-        [True, True, True],
-        [False, True, True]])
-    TS_CONVEX   = np.array([
-        [None, False, None],
-        [True, True, False],
-        [True, True, None]])
-    TS_STRAIGHT   = np.array([
-        [None, False, None],
-        [True, True, True],
-        [True, True, True]])
-
-    # Note: Rotated variations of the same types are expected to be
-    # successive integers.
-
-    TT_EMPTY        = 0
-    TT_NA           = 1
-    TT_SOLID        = 2
-
-    TT_CONCAVE_NE   = 11
-    TT_CONCAVE_SE   = 12
-    TT_CONCAVE_SW   = 13
-    TT_CONCAVE_NW   = 14
-
-    TT_CONVEX_NE    = 15
-    TT_CONVEX_SE    = 16
-    TT_CONVEX_SW    = 17
-    TT_CONVEX_NW    = 18
-
-    TT_STRAIGHT_N   = 19
-    TT_STRAIGHT_E   = 20
-    TT_STRAIGHT_S   = 21
-    TT_STRAIGHT_W   = 22
-
+    
+    @abc.abstractmethod
+    def classify(self, tilespec_lists):
+        
+        """ Classify the input GameFieldLayer, i.e. remove all illegal tiles and
+        label the rest as a tiletype. Repeat until convergence.
+        """
+        
+        m = self._cls_matrix
+        
+        while (True):
+            n = 0
+            
+            for tsl in tilespec_lists:
+                n += self._apply_tilespecs(m, *tsl)
+            debug("Classification pass: %d tiles removed", n)
+            
+            if (n <= 0):
+                break
+        
+        return GameFieldLayer(m)
+        
     def __init__(self, flayer, rev=False):
 
         """ Constructor. cls_matrix is a matrix representing "interesting" (the
@@ -63,37 +54,6 @@ class TileClassifier:
         self._flayer = flayer
         self._dim = flayer.matrix.shape[0]
         self._rev = rev
-
-    def classify(self):
-
-        """ Classify the input GameFieldLayer, i.e. remove all illegal tiles and
-        label the rest as a tiletype. Remove slivers first, then mark any tiles
-        representable with the standard tile set. Repeat until convergence.
-        """
-
-        m = self._cls_matrix
-        dim = self._dim
-
-        def sliver_spec(m, x, y, nhood):
-
-            """ Callable tilespec defining "slivers" i.e. terrain portions of
-            width 1.
-            """
-
-            if ((not nhood[0, 1] and not nhood[2, 1]) or (not nhood[1, 0] and not nhood[1, 2])):
-                return True
-            return False
-
-        while (True):
-            n = 0
-            n += self._apply_tilespecs(m, sliver_spec)
-            n += self._apply_tilespecs(m, self.TS_CONCAVE, self.TS_CONVEX, self.TS_STRAIGHT)
-
-            if (n <= 0):
-                break
-            debug("Classification pass: %d tiles removed", n)
-        
-        return GameFieldLayer(m)
         
     def _apply_tilespecs(self, m, *tilespecs):
 
@@ -202,4 +162,59 @@ class TileClassifier:
         m = np.hstack((m, np.expand_dims(m[:,-1], axis=1)))
 
         return m
+    
+class TileClassifierSolid(TileClassifier):
 
+    TS_CONCAVE  = np.array([
+        [True, True, True],
+        [True, True, True],
+        [False, True, True]])
+    TS_CONVEX   = np.array([
+        [None, False, None],
+        [True, True, False],
+        [True, True, None]])
+    TS_STRAIGHT   = np.array([
+        [None, False, None],
+        [True, True, True],
+        [True, True, True]])
+
+    # Note: Rotated variations of the same types are expected to be
+    # successive integers.
+
+    TT_EMPTY        = 0
+    TT_NA           = 1
+    TT_SOLID        = 2
+
+    TT_CONCAVE_NE   = 11
+    TT_CONCAVE_SE   = 12
+    TT_CONCAVE_SW   = 13
+    TT_CONCAVE_NW   = 14
+
+    TT_CONVEX_NE    = 15
+    TT_CONVEX_SE    = 16
+    TT_CONVEX_SW    = 17
+    TT_CONVEX_NW    = 18
+
+    TT_STRAIGHT_N   = 19
+    TT_STRAIGHT_E   = 20
+    TT_STRAIGHT_S   = 21
+    TT_STRAIGHT_W   = 22
+
+    def classify(self):
+
+        """ The solid layer type classifier removes "slivers" first for
+        efficiency, then classifies to the standard tileset.
+        """
+
+        def sliver_spec(m, x, y, nhood):
+
+            """ Callable tilespec defining "slivers" i.e. terrain portions of
+            width 1.
+            """
+
+            if ((not nhood[0, 1] and not nhood[2, 1]) or (not nhood[1, 0] and not nhood[1, 2])):
+                return True
+            return False
+
+        return super().classify(
+            ((sliver_spec,), (self.TS_CONCAVE, self.TS_CONVEX, self.TS_STRAIGHT)))

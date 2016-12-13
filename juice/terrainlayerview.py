@@ -4,7 +4,7 @@ import re
 
 from juice.terrainlayer     import \
     TerrainLayer, SeaLayer, BiomeLayer
-from juice.tileclassifier   import TileClassifier
+from juice.tileclassifier   import TileClassifierSolid
 from juice.tileset          import PlaceholderTile
 
 class TerrainLayerView:
@@ -47,24 +47,24 @@ class _SeaLayerView(TerrainLayerView):
         tileset = self._tileset
 
         return {
-            TileClassifier.TT_STRAIGHT_N    : tileset.get_tile(22, 8),
-            TileClassifier.TT_STRAIGHT_E    : tileset.get_tile(23, 9),
-            TileClassifier.TT_STRAIGHT_S    : tileset.get_tile(22, 10),
-            TileClassifier.TT_STRAIGHT_W    : tileset.get_tile(21, 9),
+            TileClassifierSolid.TT_STRAIGHT_N    : tileset.get_tile(22, 8),
+            TileClassifierSolid.TT_STRAIGHT_E    : tileset.get_tile(23, 9),
+            TileClassifierSolid.TT_STRAIGHT_S    : tileset.get_tile(22, 10),
+            TileClassifierSolid.TT_STRAIGHT_W    : tileset.get_tile(21, 9),
 
-            TileClassifier.TT_CONVEX_NE     : tileset.get_tile(23, 8),
-            TileClassifier.TT_CONVEX_SE     : tileset.get_tile(23, 10),
-            TileClassifier.TT_CONVEX_SW     : tileset.get_tile(21, 10),
-            TileClassifier.TT_CONVEX_NW     : tileset.get_tile(21, 8),
+            TileClassifierSolid.TT_CONVEX_NE     : tileset.get_tile(23, 8),
+            TileClassifierSolid.TT_CONVEX_SE     : tileset.get_tile(23, 10),
+            TileClassifierSolid.TT_CONVEX_SW     : tileset.get_tile(21, 10),
+            TileClassifierSolid.TT_CONVEX_NW     : tileset.get_tile(21, 8),
 
-            TileClassifier.TT_CONCAVE_NE    : tileset.get_tile(23, 6),
-            TileClassifier.TT_CONCAVE_SE    : tileset.get_tile(23, 7),
-            TileClassifier.TT_CONCAVE_SW    : tileset.get_tile(22, 7),
-            TileClassifier.TT_CONCAVE_NW    : tileset.get_tile(22, 6),
+            TileClassifierSolid.TT_CONCAVE_NE    : tileset.get_tile(23, 6),
+            TileClassifierSolid.TT_CONCAVE_SE    : tileset.get_tile(23, 7),
+            TileClassifierSolid.TT_CONCAVE_SW    : tileset.get_tile(22, 7),
+            TileClassifierSolid.TT_CONCAVE_NW    : tileset.get_tile(22, 6),
 
-            TileClassifier.TT_SOLID         : tileset.get_tile(22, 9),
-            TileClassifier.TT_EMPTY         : tileset.get_tile(28, 3),
-            TileClassifier.TT_NA            : tileset.get_tile(16, 3)
+            TileClassifierSolid.TT_SOLID         : tileset.get_tile(22, 9),
+            TileClassifierSolid.TT_EMPTY         : tileset.get_tile(28, 3),
+            TileClassifierSolid.TT_NA            : tileset.get_tile(16, 3)
         }
 
 class _RiverLayerView(TerrainLayerView):
@@ -73,8 +73,8 @@ class _RiverLayerView(TerrainLayerView):
         tileset = self._tileset
 
         return {
-            TileClassifier.TT_EMPTY         : None,
-            TileClassifier.TT_SOLID         : PlaceholderTile(color="#03e", layout=(
+            TileClassifierSolid.TT_EMPTY         : None,
+            TileClassifierSolid.TT_SOLID         : PlaceholderTile(color="#03e", layout=(
                 (0, 1, 0), 
                 (1, 1, 1), 
                 (0, 1, 0)
@@ -87,24 +87,24 @@ class _BiomeLayerView(TerrainLayerView):
         tileset = self._tileset
 
         return {
-            TileClassifier.TT_STRAIGHT_N    : tileset.get_tile(13, 8),
-            TileClassifier.TT_STRAIGHT_E    : tileset.get_tile(14, 9),
-            TileClassifier.TT_STRAIGHT_S    : tileset.get_tile(13, 10),
-            TileClassifier.TT_STRAIGHT_W    : tileset.get_tile(12, 9),
+            TileClassifierSolid.TT_STRAIGHT_N    : tileset.get_tile(13, 8),
+            TileClassifierSolid.TT_STRAIGHT_E    : tileset.get_tile(14, 9),
+            TileClassifierSolid.TT_STRAIGHT_S    : tileset.get_tile(13, 10),
+            TileClassifierSolid.TT_STRAIGHT_W    : tileset.get_tile(12, 9),
 
-            TileClassifier.TT_CONVEX_NE     : tileset.get_tile(14, 8),
-            TileClassifier.TT_CONVEX_SE     : tileset.get_tile(14, 10),
-            TileClassifier.TT_CONVEX_SW     : tileset.get_tile(12, 10),
-            TileClassifier.TT_CONVEX_NW     : tileset.get_tile(12, 8),
+            TileClassifierSolid.TT_CONVEX_NE     : tileset.get_tile(14, 8),
+            TileClassifierSolid.TT_CONVEX_SE     : tileset.get_tile(14, 10),
+            TileClassifierSolid.TT_CONVEX_SW     : tileset.get_tile(12, 10),
+            TileClassifierSolid.TT_CONVEX_NW     : tileset.get_tile(12, 8),
 
-            TileClassifier.TT_CONCAVE_NE    : tileset.get_tile(14, 6),
-            TileClassifier.TT_CONCAVE_SE    : tileset.get_tile(14, 7),
-            TileClassifier.TT_CONCAVE_SW    : tileset.get_tile(13, 7),
-            TileClassifier.TT_CONCAVE_NW    : tileset.get_tile(13, 6),
+            TileClassifierSolid.TT_CONCAVE_NE    : tileset.get_tile(14, 6),
+            TileClassifierSolid.TT_CONCAVE_SE    : tileset.get_tile(14, 7),
+            TileClassifierSolid.TT_CONCAVE_SW    : tileset.get_tile(13, 7),
+            TileClassifierSolid.TT_CONCAVE_NW    : tileset.get_tile(13, 6),
 
-            TileClassifier.TT_SOLID         : tileset.get_tile(13, 9),
-            TileClassifier.TT_EMPTY         : None,
-            TileClassifier.TT_NA            : tileset.get_tile(16, 3)
+            TileClassifierSolid.TT_SOLID         : tileset.get_tile(13, 9),
+            TileClassifierSolid.TT_EMPTY         : None,
+            TileClassifierSolid.TT_NA            : tileset.get_tile(16, 3)
         }
 
 class _CityLayerView(TerrainLayerView):

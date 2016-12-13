@@ -74,7 +74,13 @@ class _GameViewWindow(Window):
         istr = ""
         
         for tlayer in terrain.get_layers():
-            istr += type(tlayer).__name__ + ": " + str(tlayer[tx, ty]) + "\t"
+            cxion = tlayer.classification
+            tt = ""
+            
+            if (cxion):
+                tt = ", tt: " + str(cxion[tx, ty])
+            
+            istr += type(tlayer).__name__ + ": " + str(tlayer[tx, ty]) + tt  + "\t"
         print("x:", tx, "y:", ty, istr)
     
     def on_mouse_drag(self, x, y, dx, dy, button, mods):

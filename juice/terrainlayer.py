@@ -9,7 +9,7 @@ import scipy.signal
 
 from juice.heightmap        import Heightmap
 from juice.gamefieldlayer   import GameFieldLayer
-from juice.tileclassifier   import TileClassifier
+from juice.tileclassifier   import TileClassifierSolid
 
 class RequirementError(Exception):
     pass
@@ -96,7 +96,7 @@ class TerrainLayer(GameFieldLayer, metaclass=abc.ABCMeta):
             try:
                 cx = tlayer._classify()
             except AttributeError:
-                cx = TileClassifier(tlayer, rev=rev).classify()
+                cx = TileClassifierSolid(tlayer, rev=rev).classify()
             tlayer.classification = cx
 
         return wrapped
@@ -218,7 +218,8 @@ class RiverLayer(TerrainLayer):
 
         raise RuntimeError("Should never execute this line")
 
-    def _confirm_square_ok(self, x, y, river_id, ok_neighbors, neigh_rivers_threshold, allow_others):
+    def _confirm_square_ok(
+        self, x, y, river_id, ok_neighbors, neigh_rivers_threshold, allow_others):
 
         """ Helper routine to confirm that a position is OK for a river. A
         position is suitable if itself or not more than neigh_rivers_threshold
@@ -265,7 +266,7 @@ class RiverLayer(TerrainLayer):
 
         cxion = GameFieldLayer(self.terrain.dim)
         cxion.matrix = \
-            np.where(self.matrix > 0, TileClassifier.TT_SOLID, TileClassifier.TT_EMPTY)
+            np.where(self.matrix > 0, TileClassifierSolid.TT_SOLID, TileClassifierSolid.TT_EMPTY)
         return cxion
 
 class BiomeLayer(TerrainLayer):
