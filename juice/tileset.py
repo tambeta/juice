@@ -41,16 +41,17 @@ class Tile:
 
         return Image.frombytes("RGBA", (self._w, self._h), raw_bytes)
         
-    def _get_pyglet_img(self, pimg=None):
+    def _get_pyglet_img(self, pimg=None, pitch_dir=1):
         
-        """ Return a pyglet.image.ImageData converted from a passed PIL
-        image, or an empty ImageData if none passed.
+        """ Return a pyglet.image.ImageData converted from a passed PIL image,
+        or an empty ImageData if none passed. pitch_dir is for compatibility
+        between PIL / game and pyglet coordinate systems (flipped y-axis).
         """
         
         imagedata = image.ImageData(self._w, self._h, "RGBA", self._pitch)
         
         if (pimg):
-            imagedata.set_data("RGBA", self._pitch, pimg.tobytes())        
+            imagedata.set_data("RGBA", pitch_dir * self._pitch, pimg.tobytes())        
         return imagedata
 
 class PlaceholderTile(Tile):
@@ -73,8 +74,7 @@ class PlaceholderTile(Tile):
         
         if (layout):
             self._construct_tile(pimg, layout, color)
-        
-        self.img = self._get_pyglet_img(pimg)
+        self.img = self._get_pyglet_img(pimg, -1)
 
     def _construct_tile(self, pimg, layout, color):
         draw = ImageDraw.Draw(pimg)
