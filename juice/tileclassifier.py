@@ -37,12 +37,15 @@ class TileClassifier(metaclass=abc.ABCMeta):
     TT_EMPTY        = 0
     TT_NA           = 1
 
-    def __init__(self, flayer, rev=False):
+    def __init__(self, flayer, rev=False, extend=True):
 
         """ Constructor. cls_matrix is a matrix representing "interesting" (the
         terrain) and "uninteresting" tiles at first (a boolean matrix), later
         filled with tile type IDs. By default, all nonzero values are considered
-        interesting. Passing true for rev reverses this condition.
+        interesting. Passing true for rev reverses this condition. If extend is
+        true, the layer will seemingly extend beyond the edge, otherwise the
+        tile just beyond the edge will be considered empty (whatever its
+        semantics for the given layer).
         """
 
         assert(self.TT_EMPTY == 0)
@@ -54,6 +57,7 @@ class TileClassifier(metaclass=abc.ABCMeta):
         self._flayer = flayer
         self._dim = flayer.matrix.shape[0]
         self._rev = rev
+        self._extend = extend
 
     @abc.abstractmethod
     def classify(self, tilespec_lists):
@@ -96,7 +100,7 @@ class TileClassifier(metaclass=abc.ABCMeta):
         """ Apply a list of tilespecs, i.e. remove illegal tiles. """
 
         dim = self._dim
-        ext_m = self._extend_matrix(m)
+        ext_m = self._extend_matrix(m, self._extend)
         mask = np.full((dim, dim), True, dtype=bool)
         extrange = range(1, dim+1)
         
@@ -177,18 +181,31 @@ class TileClassifier(metaclass=abc.ABCMeta):
 
         return equal
 
-    def _extend_matrix(self, m):
+    def _extend_matrix(self, m, with_same):
 
         """ Expand a tile matrix over the borders by one: all values are
         continued further, i.e. terrain continues to terrain and non-terrain
         continues to non-terrain. The result is a matrix with 2 added to both
-        dimensions.
+        dimensions. If with_same is false, values aren't continued and padding
+        is all zeroes.
         """
-
-        m = np.vstack((m[0], m))
-        m = np.vstack((m, m[-1]))
-        m = np.hstack((np.expand_dims(m[:,0], axis=1), m))
-        m = np.hstack((m, np.expand_dims(m[:,-1], axis=1)))
+        
+        dim = self._dim
+        
+        def stack_row(i):
+            if (not with_same):
+                return np.zeros(dim)
+            return m[i]
+            
+        def stack_col(i):
+            if (not with_same):
+                return np.zeros((dim+2, 1))
+            return np.expand_dims(m[:,i], axis=1)
+        
+        m = np.vstack((stack_row(0), m))
+        m = np.vstack((m, stack_row(-1)))        
+        m = np.hstack((stack_col(0), m))
+        m = np.hstack((m, stack_col(-1)))
 
         return m
     

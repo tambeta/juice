@@ -2,6 +2,7 @@
 import abc
 import math
 import random
+import re
 import functools
 
 import numpy as np
@@ -79,26 +80,28 @@ class TerrainLayer(GameFieldLayer, metaclass=abc.ABCMeta):
 
         """ Decorator for generate methods. Applies tile classification /
         normalization after generation and stores it in the `classification`
-        attribute. Object's classify_rev attribute controls TileClassifier's rev
+        attribute. Object's classify_X attribute controls TileClassifier's X
         option. The classifier attribute specifies the TileClassifier subclass,
         by default TileClassifierSolid is used.
         """
 
         @functools.wraps(fn)
         def wrapped(tlayer):
-            try:
-                rev = tlayer.classify_rev
-            except AttributeError:
-                rev = False
-                
+            cfier_args = {}
+            
+            for (k, v) in vars(tlayer).items():
+                m = re.match(r"classify_(.*)", k)
+                if (not m):
+                    continue
+                cfier_args[m.group(1)] = v
+
             try:
                 cfier = tlayer.classifier
             except AttributeError:
                 cfier = TileClassifierSolid
 
             fn(tlayer)
-
-            cx = cfier(tlayer, rev=rev).classify()
+            cx = cfier(tlayer, **cfier_args).classify()
             tlayer.classification = cx
 
         return wrapped
@@ -130,8 +133,9 @@ class SeaLayer(TerrainLayer):
 class RiverLayer(TerrainLayer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._require = (SeaLayer,)
+        self._require = (SeaLayer,)        
         self.classifier = TileClassifierLine
+        self.classify_extend = False
 
     @TerrainLayer.classified
     def generate(self):
