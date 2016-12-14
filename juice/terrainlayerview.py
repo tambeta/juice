@@ -84,42 +84,42 @@ class _RiverLayerView(TerrainLayerView):
                 (1, 1, 1),
                 (0, 0, 0)
             )),
-            TileClassifierLine.TT_CORNER_NE     : PlaceholderTile(color="#03e", layout=(
+            TileClassifierLine.TT_CORNER_NE     : PlaceholderTile(color="#88f", layout=(
                 (0, 1, 0),
                 (0, 1, 1),
                 (0, 0, 0)
             )),
-            TileClassifierLine.TT_CORNER_SE     : PlaceholderTile(color="#03e", layout=(
+            TileClassifierLine.TT_CORNER_SE     : PlaceholderTile(color="#88f", layout=(
                 (0, 0, 0),
                 (0, 1, 1),
                 (0, 1, 0)
             )),
-            TileClassifierLine.TT_CORNER_SW     : PlaceholderTile(color="#03e", layout=(
+            TileClassifierLine.TT_CORNER_SW     : PlaceholderTile(color="#88f", layout=(
                 (0, 0, 0),
                 (1, 1, 0),
                 (0, 1, 0)
             )),
-            TileClassifierLine.TT_CORNER_NW     : PlaceholderTile(color="#03e", layout=(
+            TileClassifierLine.TT_CORNER_NW     : PlaceholderTile(color="#88f", layout=(
                 (0, 1, 0),
                 (1, 1, 0),
                 (0, 0, 0)
             )),
-            TileClassifierLine.TT_SOURCE_N      : PlaceholderTile(color="#03e", layout=(
+            TileClassifierLine.TT_SOURCE_N      : PlaceholderTile(color="#800", layout=(
                 (0, 1, 0),
                 (0, 1, 0),
                 (0, 0, 0)
             )),
-            TileClassifierLine.TT_SOURCE_E      : PlaceholderTile(color="#03e", layout=(
+            TileClassifierLine.TT_SOURCE_E      : PlaceholderTile(color="#800", layout=(
                 (0, 0, 0),
                 (0, 1, 1),
                 (0, 0, 0)
             )),
-            TileClassifierLine.TT_SOURCE_S      : PlaceholderTile(color="#03e", layout=(
+            TileClassifierLine.TT_SOURCE_S      : PlaceholderTile(color="#800", layout=(
                 (0, 0, 0),
                 (0, 1, 0),
                 (0, 1, 0)
             )),
-            TileClassifierLine.TT_SOURCE_W      : PlaceholderTile(color="#03e", layout=(
+            TileClassifierLine.TT_SOURCE_W      : PlaceholderTile(color="#800", layout=(
                 (0, 0, 0),
                 (1, 1, 0),
                 (0, 0, 0)
