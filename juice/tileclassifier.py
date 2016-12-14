@@ -1,6 +1,8 @@
 
 import abc
 import collections
+import itertools
+import re
 
 import numpy as np
 
@@ -8,6 +10,19 @@ from logging import debug, info, warning, error
 from juice.gamefieldlayer import GameFieldLayer
 
 _TileSpec = collections.namedtuple("TileSpec", ["array", "initial_tt", "rotations"])
+
+class LayerClassification(GameFieldLayer):
+    
+    """ A small adapter class for storing the classification [into
+    tiletypes]. Stores the classifier class.
+    """
+    
+    def __init__(self, matrix, cfier):        
+        if (not issubclass(cfier, TileClassifier)):
+            raise TypeError("LayerClassification constructor expects a TileClassifier subclass")
+        
+        self.classifier = cfier
+        super().__init__(matrix)
 
 class TileClassifier(metaclass=abc.ABCMeta):
     
@@ -59,8 +74,23 @@ class TileClassifier(metaclass=abc.ABCMeta):
             if (n <= 0):
                 break
         
-        return GameFieldLayer(m)
+        return LayerClassification(m, self.__class__)
 
+    @classmethod
+    def get_tt_str(cls, tt):
+        
+        """ Transform a tile type ID (an integer) into the corresponding
+        string.
+        """
+        
+        for (k, v) in vars(cls).items():
+            if (not re.match(r"TT", k)):
+                continue
+            elif (v == tt):
+                return k
+        
+        raise ValueError("No such tile type ID for {}: {}".format(cls.__name__, tt))
+        
     def _apply_tilespecs(self, m, *tilespecs):
 
         """ Apply a list of tilespecs, i.e. remove illegal tiles. """
@@ -68,18 +98,17 @@ class TileClassifier(metaclass=abc.ABCMeta):
         dim = self._dim
         ext_m = self._extend_matrix(m)
         mask = np.full((dim, dim), True, dtype=bool)
-
-        for tilespec in (tilespecs):
-            for x in range(1, dim+1):
-                for y in range(1, dim+1):
-                    cls = self._classify_tile(ext_m, mask, x, y, tilespec)
-                    if (type(cls) is bool):
-                        mask[y-1, x-1] = cls
-                    elif (type(cls) is int):
-                        mask[y-1, x-1] = False
-                        m[y-1, x-1] = cls
-                    elif (cls is not None):
-                        raise ValueError(cls)
+        extrange = range(1, dim+1)
+        
+        for (tilespec, x, y) in itertools.product(tilespecs, extrange, extrange):
+            cls = self._classify_tile(ext_m, mask, x, y, tilespec)
+            if (type(cls) is bool):
+                mask[y-1, x-1] = cls
+            elif (type(cls) is int):
+                mask[y-1, x-1] = False
+                m[y-1, x-1] = cls
+            elif (cls is not None):
+                raise ValueError(cls)
         
         m[mask] = False
         self._flayer.matrix[mask] = (0xFE if self._rev else 0)

@@ -3,7 +3,8 @@ import pyglet.window as window
 import pyglet.window.key as key
 import pyglet.window.mouse as mouse
 
-from juice.gameview import GameView
+from juice.gameview         import GameView
+from juice.tileclassifier   import TileClassifier
 
 class DisallowedInstantiation(Exception):
     pass
@@ -75,12 +76,14 @@ class _GameViewWindow(Window):
         
         for tlayer in terrain.get_layers():
             cxion = tlayer.classification
-            tt = ""
+            tt_str = ""
             
             if (cxion):
-                tt = ", tt: " + str(cxion[tx, ty])
+                tt = cxion[tx, ty]
+                if (tt != TileClassifier.TT_EMPTY):
+                    tt_str = ", " + str(cxion.classifier.get_tt_str(tt))
             
-            istr += type(tlayer).__name__ + ": " + str(tlayer[tx, ty]) + tt  + "\t"
+            istr += type(tlayer).__name__ + ": " + str(tlayer[tx, ty]) + tt_str  + "\t"
         print("x:", tx, "y:", ty, istr)
     
     def on_mouse_drag(self, x, y, dx, dy, button, mods):

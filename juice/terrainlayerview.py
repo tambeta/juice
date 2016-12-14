@@ -75,8 +75,78 @@ class _RiverLayerView(TerrainLayerView):
         return {
             TileClassifierSolid.TT_EMPTY        : None,
             TileClassifierLine.TT_STRAIGHT_NS   : PlaceholderTile(color="#03e", layout=(
-                (0, 1, 0), 
-                (0, 1, 0), 
+                (0, 1, 0),
+                (0, 1, 0),
+                (0, 1, 0)
+            )),
+            TileClassifierLine.TT_STRAIGHT_WE   : PlaceholderTile(color="#03e", layout=(
+                (0, 0, 0),
+                (1, 1, 1),
+                (0, 0, 0)
+            )),
+            TileClassifierLine.TT_CORNER_NE     : PlaceholderTile(color="#03e", layout=(
+                (0, 1, 0),
+                (0, 1, 1),
+                (0, 0, 0)
+            )),
+            TileClassifierLine.TT_CORNER_SE     : PlaceholderTile(color="#03e", layout=(
+                (0, 0, 0),
+                (0, 1, 1),
+                (0, 1, 0)
+            )),
+            TileClassifierLine.TT_CORNER_SW     : PlaceholderTile(color="#03e", layout=(
+                (0, 0, 0),
+                (1, 1, 0),
+                (0, 1, 0)
+            )),
+            TileClassifierLine.TT_CORNER_NW     : PlaceholderTile(color="#03e", layout=(
+                (0, 1, 0),
+                (1, 1, 0),
+                (0, 0, 0)
+            )),
+            TileClassifierLine.TT_SOURCE_N      : PlaceholderTile(color="#03e", layout=(
+                (0, 1, 0),
+                (0, 1, 0),
+                (0, 0, 0)
+            )),
+            TileClassifierLine.TT_SOURCE_E      : PlaceholderTile(color="#03e", layout=(
+                (0, 0, 0),
+                (0, 1, 1),
+                (0, 0, 0)
+            )),
+            TileClassifierLine.TT_SOURCE_S      : PlaceholderTile(color="#03e", layout=(
+                (0, 0, 0),
+                (0, 1, 0),
+                (0, 1, 0)
+            )),
+            TileClassifierLine.TT_SOURCE_W      : PlaceholderTile(color="#03e", layout=(
+                (0, 0, 0),
+                (1, 1, 0),
+                (0, 0, 0)
+            )),
+            TileClassifierLine.TT_TBONE_N       : PlaceholderTile(color="#03e", layout=(
+                (0, 1, 0),
+                (1, 1, 1),
+                (0, 0, 0)
+            )),
+            TileClassifierLine.TT_TBONE_E       : PlaceholderTile(color="#03e", layout=(
+                (0, 1, 0),
+                (0, 1, 1),
+                (0, 1, 0)
+            )),
+            TileClassifierLine.TT_TBONE_S       : PlaceholderTile(color="#03e", layout=(
+                (0, 0, 0),
+                (1, 1, 1),
+                (0, 1, 0)
+            )),
+            TileClassifierLine.TT_TBONE_W       : PlaceholderTile(color="#03e", layout=(
+                (0, 1, 0),
+                (1, 1, 0),
+                (0, 1, 0)
+            )),
+            TileClassifierLine.TT_FOURWAY       : PlaceholderTile(color="#03e", layout=(
+                (0, 1, 0),
+                (1, 1, 1),
                 (0, 1, 0)
             )),
         }
