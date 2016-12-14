@@ -67,8 +67,6 @@ class Terrain:
     CITY_CLOSENESS_FACTOR = 20
     MAX_CITY_DISALLOW_RADIUS = 40
 
-    LAYER_ORDER = (SeaLayer, RiverLayer, BiomeLayer, CityLayer)
-
     def __init__(self, dim, randseed=None):
         self.heightmap = Heightmap(
             dim, randseed=randseed,
@@ -122,7 +120,7 @@ class Terrain:
         Generator method.
         """
 
-        for ltype in self.LAYER_ORDER:
+        for ltype in map(type, self._layers):
             layer = None
 
             try:
