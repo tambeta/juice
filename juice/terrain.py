@@ -3,6 +3,7 @@ import colorsys
 import functools
 import random
 
+from logging import debug, info, warning, error
 from warnings import warn
 
 import numpy as np
@@ -12,7 +13,7 @@ from PIL import Image
 
 from juice.heightmap import Heightmap
 from juice.terrainlayer import \
-    TerrainLayer, RiverLayer, SeaLayer, BiomeLayer, CityLayer
+    TerrainLayer, RiverLayer, DeltaLayer, SeaLayer, BiomeLayer, CityLayer
 
 class Terrain:
 
@@ -57,8 +58,11 @@ class Terrain:
     RIVER_DENSITY = 0.025
     MIN_RIVER_SOURCES = 4
 
-    DESERT_ID = 1
-    FOREST_ID = 2
+    DELTA_SEA = 80
+    DELTA_RIVER = 81
+
+    BIOME_DESERT = 1
+    BIOME_FOREST = 2
     BIOME_H_DELTA = 15
     MIN_BIOME_SIZE = 32
 
@@ -104,7 +108,6 @@ class Terrain:
         except LookupError as e:
             pass
 
-        layer.terrain = self
         self._layers.append(layer)
 
     def get_layer_by_type(self, ltype):
@@ -188,27 +191,27 @@ class Terrain:
         layer_colorers = {}
 
         def biome_colorer(val):
-            if (val == self.DESERT_ID):
+            if (val == self.BIOME_DESERT):
                 return (230, 230, 0)
-            elif (val == self.FOREST_ID):
+            elif (val == self.BIOME_FOREST):
                 return (0, 125, 0)
             raise ValueError("No such biome ID " + str(val))
+            
+        def debug_colorer(color):
+            return lambda v: (255, 0, 0) if (v == 0xFF) else color
 
-        def heatmap_colorer(max_value, val):
-
-            """ For use with functools.partial. """
-
-            return (min(255, int(val / max_value * 255)), 0, 0)
-
-        layer_colorers[SeaLayer] = \
-            lambda x: (255, 0, 0) if (x == 255) else (0, 0, 200)
-        layer_colorers[RiverLayer] = (80, 80, 240)
+        layer_colorers[SeaLayer] = debug_colorer((0, 0, 200))
+        layer_colorers[RiverLayer] = debug_colorer((80, 80, 240))
         layer_colorers[BiomeLayer] = biome_colorer
         layer_colorers[CityLayer] = \
             lambda x: (255, 0, 0) if (x == 1) else (0, 255, 0)
 
         for layer in self.get_layers():
-            colorer = layer_colorers[type(layer)]
+            try:
+                colorer = layer_colorers[type(layer)]
+            except KeyError:
+                debug("No colorer for {} found".format(layer.__class__.__name__))
+                continue
 
             for (x, y, v) in layer.get_points():
                 color = colorer(v) if callable(colorer) else colorer

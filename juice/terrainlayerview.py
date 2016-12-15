@@ -4,7 +4,7 @@ import re
 
 from juice.terrainlayer     import \
     TerrainLayer, SeaLayer, BiomeLayer
-from juice.tileclassifier   import TileClassifierSolid, TileClassifierLine
+from juice.tileclassifier   import TileClassifierSolid, TileClassifierLine, TileClassifierDelta
 from juice.tileset          import PlaceholderTile
 
 class TerrainLayerView:
@@ -149,6 +149,33 @@ class _RiverLayerView(TerrainLayerView):
                 (1, 1, 1),
                 (0, 1, 0)
             )),
+        }
+
+class _DeltaLayerView(TerrainLayerView):
+    @functools.lru_cache()
+    def get_tiles(self):
+        return {
+            TileClassifierDelta.TT_EMPTY    : None,
+            TileClassifierDelta.TT_DELTA_N  : PlaceholderTile(color="#9f8", layout=(
+                (1, 1, 1),
+                (0, 0, 0),
+                (0, 0, 0)
+            )),   
+            TileClassifierDelta.TT_DELTA_E  : PlaceholderTile(color="#9f8", layout=(
+                (0, 0, 1),
+                (0, 0, 1),
+                (0, 0, 1)
+            )),   
+            TileClassifierDelta.TT_DELTA_S  : PlaceholderTile(color="#9f8", layout=(
+                (0, 0, 0),
+                (0, 0, 0),
+                (1, 1, 1)
+            )),   
+            TileClassifierDelta.TT_DELTA_W  : PlaceholderTile(color="#9f8", layout=(
+                (1, 0, 0),
+                (1, 0, 0),
+                (1, 0, 0)
+            )),   
         }
 
 class _BiomeLayerView(TerrainLayerView):

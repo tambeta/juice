@@ -50,10 +50,7 @@ class TileClassifier(metaclass=abc.ABCMeta):
 
         assert(self.TT_EMPTY == 0)
 
-        cm = np.full(flayer.matrix.shape, self.TT_EMPTY, dtype=np.uint8)
-        cm[flayer.matrix == 0 if rev else flayer.matrix != 0] = self.TT_NA
-
-        self._cls_matrix = cm
+        self._cls_matrix = self._init_matrix(flayer, rev=rev)
         self._flayer = flayer
         self._dim = flayer.matrix.shape[0]
         self._rev = rev
@@ -94,6 +91,13 @@ class TileClassifier(metaclass=abc.ABCMeta):
                 return k
         
         raise ValueError("No such tile type ID for {}: {}".format(cls.__name__, tt))
+
+    def _init_matrix(self, flayer, rev=False, empty=False):
+        cm = np.full(flayer.matrix.shape, self.TT_EMPTY, dtype=np.uint8)
+        
+        if (not empty):
+            cm[flayer.matrix == 0 if rev else flayer.matrix != 0] = self.TT_NA
+        return cm
         
     def _apply_tilespecs(self, m, *tilespecs):
 
@@ -265,25 +269,25 @@ class TileClassifierSolid(TileClassifier):
 
 class TileClassifierLine(TileClassifier):
     
-    TT_STRAIGHT_NS   = 11
-    TT_STRAIGHT_WE   = 12
+    TT_STRAIGHT_NS   = 21
+    TT_STRAIGHT_WE   = 22
     
-    TT_SOURCE_N      = 15
-    TT_SOURCE_E      = 16
-    TT_SOURCE_S      = 17
-    TT_SOURCE_W      = 18
+    TT_SOURCE_N      = 31
+    TT_SOURCE_E      = 32
+    TT_SOURCE_S      = 33
+    TT_SOURCE_W      = 34
     
-    TT_CORNER_NE     = 21
-    TT_CORNER_SE     = 22
-    TT_CORNER_SW     = 23
-    TT_CORNER_NW     = 24
+    TT_CORNER_NE     = 41
+    TT_CORNER_SE     = 42
+    TT_CORNER_SW     = 43
+    TT_CORNER_NW     = 44
     
-    TT_TBONE_N       = 31
-    TT_TBONE_E       = 32
-    TT_TBONE_S       = 33
-    TT_TBONE_W       = 34
+    TT_TBONE_N       = 51
+    TT_TBONE_E       = 52
+    TT_TBONE_S       = 53
+    TT_TBONE_W       = 54
     
-    TT_FOURWAY       = 41
+    TT_FOURWAY       = 61
     
     TS_STRAIGHT  = _TileSpec._make((np.array([
         [None,  True,  None],
@@ -309,3 +313,46 @@ class TileClassifierLine(TileClassifier):
     def classify(self):
         return super().classify(
             ((self.TS_STRAIGHT, self.TS_SOURCE, self.TS_CORNER, self.TS_TBONE, self.TS_FOURWAY),))        
+
+class TileClassifierDelta(TileClassifier):
+    
+    TT_DELTA_N  = 71
+    TT_DELTA_E  = 72
+    TT_DELTA_S  = 73
+    TT_DELTA_W  = 74
+
+    def __init__(self, flayer, terrain=None):
+        self._cls_matrix = self._init_matrix(flayer, empty=True)
+        self._flayer = flayer
+        self._terrain = terrain
+
+    def classify(self):
+        
+        """ Classify deltas by determining the orientation of river -> sea
+        junctions.
+        """
+        
+        m = self._cls_matrix
+        t = self._terrain
+        flayer = self._flayer
+        
+        def set_delta_dir(cx, cy, x, y):
+            if (flayer[cx, cy] != t.DELTA_SEA):
+                return
+                
+            if (cx - x == -1):
+                m[y, x] = self.TT_DELTA_W
+            elif (cx - x == 1):
+                m[y, x] = self.TT_DELTA_E
+            elif (cy - y == -1):
+                m[y, x] = self.TT_DELTA_N
+            elif (cy - y == 1):
+                m[y, x] = self.TT_DELTA_S
+            else:
+                raise RuntimeError("GameFieldLayer.foreach_edge_neighbor broken")            
+        
+        for c in np.argwhere(flayer.matrix == t.DELTA_RIVER):
+            x = c[1]; y = c[0]
+            flayer.foreach_edge_neighbor(set_delta_dir, x, y, x, y)
+        
+        return LayerClassification(m, self.__class__)

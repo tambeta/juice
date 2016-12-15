@@ -10,7 +10,7 @@ import scipy.signal
 
 from juice.heightmap        import Heightmap
 from juice.gamefieldlayer   import GameFieldLayer
-from juice.tileclassifier   import TileClassifierSolid, TileClassifierLine
+from juice.tileclassifier   import TileClassifierSolid, TileClassifierLine, TileClassifierDelta
 
 class RequirementError(Exception):
     pass
@@ -25,12 +25,12 @@ class TerrainLayer(GameFieldLayer, metaclass=abc.ABCMeta):
     and these have been generated).
     """
 
-    def __init__(self, randseed=None):
+    def __init__(self, terrain, randseed=None):
         if (type(self) is TerrainLayer):
             raise TypeError("Cannot instantiate TerrainLayer directly")
 
         self.matrix = None
-        self.terrain = None
+        self.terrain = terrain
         self.classification = None
 
         self._require = None
@@ -200,6 +200,7 @@ class RiverLayer(TerrainLayer):
             ok_neighbors = []
 
             if (smatrix[y, x] > 0):
+                matrix[y, x] = river_id # For DeltaLayer generation, removed therein
                 return True
             elif (self._is_square_converging(x, y, river_id)):
                 matrix[y, x] = river_id
@@ -267,6 +268,52 @@ class RiverLayer(TerrainLayer):
         self.foreach_edge_neighbor(have_other_river_nbrs, x, y)
         return is_converging
 
+class DeltaLayer(TerrainLayer):
+
+    """ The layer of river deltas. Marks the boundaries where river becomes
+    the sea, yielding neighboring pairs of DELTA_SEA and DELTA_RIVER for the
+    classifier.
+    """
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._require = (RiverLayer,)        
+        self.classifier = TileClassifierDelta
+        self.classify_terrain = self.terrain
+    
+    @TerrainLayer.classified
+    def generate(self):
+        
+        """ Let SD be a matrix > 0 where rivers and seas ovelap. Let C be a
+        convolution of SD with an edge neighbor detecting kernel. Let RD be a
+        matrix > 0 where C and rivers overlap. The delta matrix is the
+        combination of SD and RD.
+        
+        Note that this method is tightly coupled to RiverLayer: river tiles
+        extending into the sea and used solely for delta construction are
+        removed from its matrix and classification.
+        """
+        
+        matrix = self._init_matrix()
+        
+        terrain = self.terrain
+        rlayer = terrain.get_layer_by_type(RiverLayer)
+        smatrix = terrain.get_layer_by_type(SeaLayer).matrix
+        rmatrix = rlayer.matrix        
+        conv_matrix = np.array(((0, 1, 0), (1, 0, 1), (0, 1, 0)))
+            
+        sdelta_coords = np.nonzero(np.logical_and(smatrix > 0, rmatrix > 0))
+        matrix[sdelta_coords] = terrain.DELTA_SEA
+        
+        rmatrix[sdelta_coords] = 0                      # Remove from river matrix
+        rlayer.classification.matrix[sdelta_coords] = 0 # Remove from river cxion matrix
+        
+        conv = scipy.signal.convolve2d(matrix, conv_matrix, mode="same")        
+        rdelta_coords = np.nonzero(np.logical_and(rmatrix > 0, conv > 0))        
+        matrix[rdelta_coords] = terrain.DELTA_RIVER
+        
+        self._matrix = matrix
+
 class BiomeLayer(TerrainLayer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -285,7 +332,7 @@ class BiomeLayer(TerrainLayer):
         hmatrix = terrain.heightmap.matrix
         smatrix = terrain.get_layer_by_type(SeaLayer).matrix
         rmatrix = terrain.get_layer_by_type(RiverLayer).matrix
-        biome_ids = (terrain.FOREST_ID, terrain.DESERT_ID)
+        biome_ids = (terrain.BIOME_FOREST, terrain.BIOME_DESERT)
 
         # Set a height range to biome
 
@@ -372,9 +419,9 @@ class CityLayer(TerrainLayer):
             if (self.foreach_neighbor(check_sea_adjacency, x, y) == False):
                 score += 3
 
-            if (bmatrix[y, x] == terrain.DESERT_ID):
+            if (bmatrix[y, x] == terrain.BIOME_DESERT):
                 score -= 0.9
-            elif (bmatrix[y, x] == terrain.FOREST_ID):
+            elif (bmatrix[y, x] == terrain.BIOME_FOREST):
                 score -= 0.5
 
             score_vec[coord_i] = score
