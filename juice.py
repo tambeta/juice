@@ -24,7 +24,6 @@ from juice.window           import Window
 
 GAME_WIDTH      = 1184
 GAME_HEIGHT     = 736
-TERRAIN_DIM     = 2**6
 DEBUG_EVENTS    = False
 DEBUG_GL        = True
 
@@ -52,6 +51,10 @@ def parse_command_line():
     parser = argparse.ArgumentParser(description = "Juice: the power grid game")
     parser.add_argument(
         "-r", "--random-seed", type=int, help="Specify random seed")
+    parser.add_argument(
+        "-d", "--dimension", type=int, default=64,
+        help="Game field side length"
+    )
     parser.add_argument(
         "-t", "--timing", action="store_true",
         help="Timing / profiling mode, exit after terrain generation"
@@ -96,11 +99,11 @@ def load_state(fn):
     f = open(fn, "rb")
     return pickle.load(f)
 
-def generate(randseed=None):
+def generate(dim, randseed=None):
 
     """ Generate a Terrain and return it. """
 
-    terr = Terrain(TERRAIN_DIM, randseed=randseed)
+    terr = Terrain(dim, randseed=randseed)
     terr.add_layer(SeaLayer(terr, randseed=randseed))
     terr.add_layer(RiverLayer(terr, randseed=randseed))
     terr.add_layer(DeltaLayer(terr, randseed=randseed))
@@ -122,7 +125,7 @@ def main():
     info("random seed: %d", randseed)
 
     if (not args.load):
-        terr = generate(randseed)
+        terr = generate(args.dimension, randseed)
         if (args.save):
             save_state(terr, args.save)
     else:
