@@ -74,7 +74,7 @@ class Terrain:
     def __init__(self, dim, randseed=None):
         self.heightmap = Heightmap(
             dim, randseed=randseed,
-            #min_cell_size=4, noise_range=35, blur_sigma=0.8
+            #min_cell_size=4, noise_range=75, blur_sigma=0.65
         )
         self.dim = dim
 

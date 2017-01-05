@@ -10,7 +10,8 @@ import scipy.signal
 
 from juice.heightmap        import Heightmap
 from juice.gamefieldlayer   import GameFieldLayer
-from juice.tileclassifier   import TileClassifierSolid, TileClassifierLine, TileClassifierDelta
+from juice.tileclassifier   import \
+    TileClassifierSolid, TileClassifierLine, TileClassifierDelta, TileClassifierSimple
 
 class RequirementError(Exception):
     pass
@@ -367,7 +368,9 @@ class CityLayer(TerrainLayer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._require = (SeaLayer, RiverLayer, BiomeLayer)
-
+        self.classifier = TileClassifierSimple
+    
+    @TerrainLayer.classified
     def generate(self):
 
         """ Generate city layer by assigning a score to each allowed land square

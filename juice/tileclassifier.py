@@ -90,7 +90,7 @@ class TileClassifier(metaclass=abc.ABCMeta):
             elif (v == tt):
                 return k
         
-        raise ValueError("No such tile type ID for {}: {}".format(cls.__name__, tt))
+        raise LookupError("No such tile type ID for {}: {}".format(cls.__name__, tt))
 
     def _init_matrix(self, flayer, rev=False, empty=False):
         cm = np.full(flayer.matrix.shape, self.TT_EMPTY, dtype=np.uint8)
@@ -325,7 +325,7 @@ class TileClassifierDelta(TileClassifier):
         self._cls_matrix = self._init_matrix(flayer, empty=True)
         self._flayer = flayer
         self._terrain = terrain
-
+    
     def classify(self):
         
         """ Classify deltas by determining the orientation of river -> sea
@@ -356,3 +356,10 @@ class TileClassifierDelta(TileClassifier):
             flayer.foreach_edge_neighbor(set_delta_dir, x, y, x, y)
         
         return LayerClassification(m, self.__class__)
+
+class TileClassifierSimple(TileClassifier):
+    def __init__(self, flayer):
+        super().__init__(flayer)
+
+    def classify(self):
+        return LayerClassification(self._cls_matrix, self.__class__)

@@ -164,7 +164,7 @@ class GameView:
         dim = self.terrain.dim
         lviews = self._get_usable_layerviews()
         layer_tiles = []
-        tilefield = GameFieldLayer(dim, dtype=np.uint32)
+        tilefield = GameFieldLayer(dim, dtype=np.uint64)
         tileidx = {}
 
         def make_tileidx_key(tts):

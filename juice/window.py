@@ -78,10 +78,14 @@ class _GameViewWindow(Window):
             cxion = tlayer.classification
             tt_str = ""
             
-            if (cxion):
-                tt = cxion[tx, ty]
-                if (tt != TileClassifier.TT_EMPTY):
+            if (cxion and cxion[tx, ty] != TileClassifier.TT_EMPTY):
+                try:
+                    tt = cxion[tx, ty]
                     tt_str = ", " + str(cxion.classifier.get_tt_str(tt))
+                except LookupError:
+                    tt_str = ", ?"
+            else:
+                continue
             
             istr += type(tlayer).__name__ + ": " + str(tlayer[tx, ty]) + tt_str  + "\t"
         print("x:", tx, "y:", ty, istr)

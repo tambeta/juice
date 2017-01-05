@@ -205,6 +205,15 @@ class _BiomeLayerView(TerrainLayerView):
         }
 
 class _CityLayerView(TerrainLayerView):
-    pass
+    @functools.lru_cache()
+    def get_tiles(self):
+        tileset = self._tileset
 
-
+        return {
+            0 : None,
+            1 : PlaceholderTile(color="#BA0000", layout=(
+                (1, 1, 1),
+                (1, 0, 1),
+                (1, 1, 1)
+            )),  
+        }
