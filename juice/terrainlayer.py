@@ -8,6 +8,7 @@ import functools
 import numpy as np
 import scipy.signal
 
+from juice.city             import City
 from juice.heightmap        import Heightmap
 from juice.gamefieldlayer   import GameFieldLayer
 from juice.tileclassifier   import \
@@ -369,7 +370,10 @@ class CityLayer(TerrainLayer):
         super().__init__(*args, **kwargs)
         self._require = (SeaLayer, RiverLayer, BiomeLayer)
         self.classifier = TileClassifierSimple
-    
+        
+        self.cities = []
+        self._cityindex = {}
+        
     @TerrainLayer.classified
     def generate(self):
 
@@ -443,6 +447,7 @@ class CityLayer(TerrainLayer):
             self.matrix[p[1], p[0]] = 1
 
         self._remove_close_cities()
+        self._create_objects()
 
     def _remove_close_cities(self):
 
@@ -488,3 +493,48 @@ class CityLayer(TerrainLayer):
 
         foreach_coord(coords, remove_close_dests, coords, matrix)
         self.matrix = matrix
+    
+    def _create_objects(self):
+        
+        """ Create the City objects. """
+        
+        i = 0        
+        m = self.matrix
+        coords = np.transpose(np.nonzero(m))
+        
+        self.cities = []
+        
+        for c in coords:
+            x = c[1]
+            y = c[0]
+            
+            self.cities.append(City(x, y))
+            
+            try:
+                self._cityindex[x]
+            except KeyError:
+                self._cityindex[x] = {}
+            
+            self._cityindex[x][y] = i
+            i += 1
+
+class RoadLayer(TerrainLayer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._require = (CityLayer,)
+        self.classifier = TileClassifierLine
+    
+    @TerrainLayer.classified
+    def generate(self):
+        terrain = self.terrain
+        clayer = terrain.get_layer_by_type(CityLayer)
+        cities = clayer.cities
+        
+        self._init_matrix()
+        self._generate_road(*random.sample(cities, 2))        
+
+    def _generate_road(self, city1, city2):
+        
+        """ Generate a road between two Cities. """
+        
+        pass

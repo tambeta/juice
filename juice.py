@@ -19,7 +19,7 @@ from juice.config           import config
 from juice.gameview         import GameView
 from juice.terrain          import Terrain
 from juice.terrainlayer     import \
-    TerrainLayer, RiverLayer, DeltaLayer, SeaLayer, BiomeLayer, CityLayer
+    TerrainLayer, RiverLayer, DeltaLayer, SeaLayer, BiomeLayer, CityLayer, RoadLayer
 from juice.window           import Window
 
 GAME_WIDTH      = 1184
@@ -109,6 +109,7 @@ def generate(dim, randseed=None):
     terr.add_layer(DeltaLayer(terr, randseed=randseed))
     terr.add_layer(BiomeLayer(terr, randseed=randseed))
     terr.add_layer(CityLayer(terr, randseed=randseed))
+    terr.add_layer(RoadLayer(terr, randseed=randseed))
     terr.generate(post_generate_cb=timed_print)
     
     return terr
