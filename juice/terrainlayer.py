@@ -576,8 +576,12 @@ class RoadLayer(TerrainLayer):
 
     def _generate_road(self, city1, city2):
         
-        """ Generate a road between two Cities. """
+        """ Generate a road between two Cities using Dijkstra's algorithm.
         
-        # TODO: road bonus updates for the weightmap
+        TODO: road bonus updates for the weightmap
+        """
         
-        pass
+        debug("jhe")
+        
+        
+        
