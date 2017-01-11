@@ -523,18 +523,61 @@ class RoadLayer(TerrainLayer):
         super().__init__(*args, **kwargs)
         self._require = (CityLayer,)
         self.classifier = TileClassifierLine
-    
+        
+        self._weightmap = None
+        
     @TerrainLayer.classified
     def generate(self):
         terrain = self.terrain
-        clayer = terrain.get_layer_by_type(CityLayer)
-        cities = clayer.cities
+        cities = terrain.get_layer_by_type(CityLayer).cities
         
         self._init_matrix()
+        self._init_weightmap()
         self._generate_road(*random.sample(cities, 2))        
+
+    def _init_weightmap(self):
+        
+        """ Create the matrix of weigths, or movement points for the terrain,
+        used in pathfinding.
+        """
+        
+        terrain = self.terrain
+        smatrix = terrain.get_layer_by_type(SeaLayer).matrix        
+        bmatrix = terrain.get_layer_by_type(BiomeLayer).matrix
+        
+        rlayer = terrain.get_layer_by_type(RiverLayer)
+        rmatrix = terrain.get_layer_by_type(RiverLayer).matrix
+        rcxion_matrix = rlayer.classification.matrix
+        
+        wm = GameFieldLayer(self.terrain.dim, dtype=np.floating)
+        
+        # Sea is impassable
+        
+        wm.matrix = np.where(smatrix, float("inf"), 1.0)
+        
+        # Biomes incur penalties
+        
+        wm.matrix = np.where(bmatrix == terrain.BIOME_DESERT,
+            wm.matrix + terrain.MP_PENALTY_DESERT, wm.matrix)
+        wm.matrix = np.where(bmatrix == terrain.BIOME_FOREST,
+            wm.matrix + terrain.MP_PENALTY_FOREST, wm.matrix)
+        
+        # Rivers are passable only through straight sections and incur a
+        # high penalty
+        
+        wm.matrix = np.where(rcxion_matrix, float("inf"), wm.matrix)
+        wm.matrix = np.where(
+            np.logical_or(
+                rcxion_matrix == TileClassifierLine.TT_STRAIGHT_WE, 
+                rcxion_matrix == TileClassifierLine.TT_STRAIGHT_NS
+            ), terrain.MP_BRIDGE, wm.matrix)
+        
+        self._weightmap = wm
 
     def _generate_road(self, city1, city2):
         
         """ Generate a road between two Cities. """
+        
+        # TODO: road bonus updates for the weightmap
         
         pass

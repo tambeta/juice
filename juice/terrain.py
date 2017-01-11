@@ -70,6 +70,11 @@ class Terrain:
     MIN_POPSUPPORT_SIZE = 12
     CITY_CLOSENESS_FACTOR = 20
     MAX_CITY_DISALLOW_RADIUS = 40
+    
+    MP_PENALTY_DESERT = 0.2
+    MP_PENALTY_FOREST = 0.5
+    MP_PENALTY_ROAD = -0.25
+    MP_BRIDGE = 5.0
 
     def __init__(self, dim, randseed=None):
         self.heightmap = Heightmap(
