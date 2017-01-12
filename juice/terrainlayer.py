@@ -625,14 +625,30 @@ class RoadLayer(TerrainLayer):
                 debug("\troute to endpoint found, distance {}".format(distm[ey, ex]))
                 break
         
-        _traceback_road(end_city)
+        self._traceback_road(end_city, distm)
         
-    def _traceback_road(end_city, distm):
+    def _traceback_road(self, end_city, distm):
         
         """ After running Dijkstra, trace back road from endpoint to start point
         and store it in the layer matrix.
         """
         
-        # TODO
+        distl = GameFieldLayer(distm)
+        cx = end_city.x
+        cy = end_city.y
+        d = distl[cx, cy]
+        m = self.matrix
         
-        pass
+        m[cy, cx] = 1
+
+        while(d > 0):
+            def find_min_d_neighbor(nx, ny):
+                nonlocal d, cx, cy
+                
+                if (distl[nx, ny] < d):
+                    d = distl[nx, ny]
+                    cx = nx
+                    cy = ny            
+            
+            distl.foreach_edge_neighbor(find_min_d_neighbor, cx, cy)
+            m[cy, cx] = 1

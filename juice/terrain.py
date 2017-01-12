@@ -13,7 +13,7 @@ from PIL import Image
 
 from juice.heightmap import Heightmap
 from juice.terrainlayer import \
-    TerrainLayer, RiverLayer, DeltaLayer, SeaLayer, BiomeLayer, CityLayer
+    TerrainLayer, RiverLayer, DeltaLayer, SeaLayer, BiomeLayer, CityLayer, RoadLayer
 
 class Terrain:
 
@@ -75,6 +75,8 @@ class Terrain:
     MP_PENALTY_FOREST = 0.5
     MP_PENALTY_ROAD = -0.25
     MP_BRIDGE = 5.0
+    
+    LAYER_DRAW_ORDER = (SeaLayer, RiverLayer, BiomeLayer, RoadLayer, CityLayer)
 
     def __init__(self, dim, randseed=None):
         self.heightmap = Heightmap(
@@ -124,11 +126,11 @@ class Terrain:
 
     def get_layers(self):
 
-        """ Get layers in order, warn if layer of expected type not found.
+        """ Get layers in draw order, warn if layer of expected type not found.
         Generator method.
         """
 
-        for ltype in map(type, self._layers):
+        for ltype in self.LAYER_DRAW_ORDER:
             layer = None
 
             try:
@@ -210,6 +212,7 @@ class Terrain:
         layer_colorers[BiomeLayer] = biome_colorer
         layer_colorers[CityLayer] = \
             lambda x: (255, 0, 0) if (x == 1) else (0, 255, 0)
+        layer_colorers[RoadLayer] = debug_colorer((127, 0, 0))
 
         for layer in self.get_layers():
             try:
