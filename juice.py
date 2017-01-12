@@ -87,7 +87,7 @@ def setup_misc():
     if (not DEBUG_GL):
         pyglet.options['debug_gl'] = False
         
-    np.set_printoptions(threshold=float("nan"))
+    np.set_printoptions(threshold=float("nan"), linewidth=140)
     pyglet.gl.glEnable(gl.GL_BLEND)
     pyglet.gl.glBlendFunc(pyglet.gl.GL_SRC_ALPHA, pyglet.gl.GL_ONE_MINUS_SRC_ALPHA)
 

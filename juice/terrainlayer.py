@@ -1,9 +1,12 @@
 
 import abc
+import heapq
 import math
 import random
 import re
 import functools
+
+from logging import debug, info, warning, error
 
 import numpy as np
 import scipy.signal
@@ -519,6 +522,9 @@ class CityLayer(TerrainLayer):
             i += 1
 
 class RoadLayer(TerrainLayer):
+    
+    # TODO: road bonus updates for the weightmap (augment wmap after each road)
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._require = (CityLayer,)
@@ -574,14 +580,59 @@ class RoadLayer(TerrainLayer):
         
         self._weightmap = wm
 
-    def _generate_road(self, city1, city2):
+    def _generate_road(self, start_city, end_city):
         
-        """ Generate a road between two Cities using Dijkstra's algorithm.
+        """ Generate a road between two Cities using Dijkstra's algorithm. """
         
-        TODO: road bonus updates for the weightmap
+        cx = start_city.x
+        cy = start_city.y
+        ex = end_city.x
+        ey = end_city.y
+        
+        inf = float("inf")
+        dim = self.terrain.dim                
+        distm = np.full((dim, dim), inf, dtype=np.floating)        
+        wm = self._weightmap
+        m = self.matrix
+        to_visit = []
+        
+        distm[cy, cx] = 0
+        debug("Generating road from ({}, {}) -> ({}, {})".format(cx, cy, ex, ey))        
+
+        while (True):
+            curr_d = distm[cy, cx]
+            
+            def neighbor_callback(nx, ny):
+                
+                # Consider every edge neighbor of current position: if distance is smaller
+                # than stored in the distance matrix, update distance and add position to
+                # the priority queue of unvisited positions. A dynamic pqueue works as
+                # long as there are no negative penalties in the weight matrix.
+                
+                d = curr_d + wm[nx, ny]
+                
+                if (d < distm[ny, nx]):
+                    distm[ny, nx] = d
+                    heapq.heappush(to_visit, (d, nx, ny))
+            
+            wm.foreach_edge_neighbor(neighbor_callback, cx, cy)
+            (d, cx, cy) = heapq.heappop(to_visit)
+            
+            if (d == inf):
+                debug("\tno route to endpoint")
+                break
+            elif (cx == ex and cy == ey):
+                debug("\troute to endpoint found, distance {}".format(distm[ey, ex]))
+                break
+        
+        _traceback_road(end_city)
+        
+    def _traceback_road(end_city, distm):
+        
+        """ After running Dijkstra, trace back road from endpoint to start point
+        and store it in the layer matrix.
         """
         
-        debug("jhe")
+        # TODO
         
-        
-        
+        pass

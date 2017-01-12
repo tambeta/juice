@@ -51,7 +51,7 @@ class GameFieldLayer:
         Note: often convolution is preferable, e.g. http://stackoverflow.com/a/12613511
         """
 
-        dim = self.terrain.dim
+        dim = self.matrix.shape[0]
 
         if (self.foreach_edge_neighbor(cb, x, y, *extra) == False):
             return False
@@ -75,7 +75,7 @@ class GameFieldLayer:
         Note: often convolution is preferable, e.g. http://stackoverflow.com/a/12613511
         """
 
-        dim = self.terrain.dim
+        dim = self.matrix.shape[0]
 
         for (cx, cy) in ((x, y-1), (x+1, y), (x, y+1), (x-1, y)):
             if (cx >= 0 and cy >= 0 and cx < dim and cy < dim):
