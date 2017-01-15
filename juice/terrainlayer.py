@@ -522,9 +522,6 @@ class CityLayer(TerrainLayer):
             i += 1
 
 class RoadLayer(TerrainLayer):
-    
-    # TODO: road bonus updates for the weightmap (augment wmap after each road)
-    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._require = (CityLayer,)
@@ -536,10 +533,15 @@ class RoadLayer(TerrainLayer):
     def generate(self):
         terrain = self.terrain
         cities = terrain.get_layer_by_type(CityLayer).cities
+        n_roads = len(cities) // 2
         
         self._init_matrix()
         self._init_weightmap()
-        self._generate_road(*random.sample(cities, 2))        
+        
+        debug("Generating {} roads between {} cities".format(n_roads, len(cities)))
+        
+        for i in range(n_roads):
+            self._generate_road(*random.sample(cities, 2))
 
     def _init_weightmap(self):
         
@@ -555,28 +557,28 @@ class RoadLayer(TerrainLayer):
         rmatrix = terrain.get_layer_by_type(RiverLayer).matrix
         rcxion_matrix = rlayer.classification.matrix
         
-        wm = GameFieldLayer(self.terrain.dim, dtype=np.floating)
+        wm = np.zeros((terrain.dim, terrain.dim), dtype=np.floating)
         
         # Sea is impassable
         
-        wm.matrix = np.where(smatrix, float("inf"), 1.0)
+        wm = np.where(smatrix, float("inf"), 1.0)
         
         # Biomes incur penalties
         
-        wm.matrix = np.where(bmatrix == terrain.BIOME_DESERT,
-            wm.matrix + terrain.MP_PENALTY_DESERT, wm.matrix)
-        wm.matrix = np.where(bmatrix == terrain.BIOME_FOREST,
-            wm.matrix + terrain.MP_PENALTY_FOREST, wm.matrix)
+        wm = np.where(bmatrix == terrain.BIOME_DESERT,
+            wm + terrain.MP_PENALTY_DESERT, wm)
+        wm = np.where(bmatrix == terrain.BIOME_FOREST,
+            wm + terrain.MP_PENALTY_FOREST, wm)
         
         # Rivers are passable only through straight sections and incur a
         # high penalty
         
-        wm.matrix = np.where(rcxion_matrix, float("inf"), wm.matrix)
-        wm.matrix = np.where(
+        wm = np.where(rcxion_matrix, float("inf"), wm)
+        wm = np.where(
             np.logical_or(
                 rcxion_matrix == TileClassifierLine.TT_STRAIGHT_WE, 
                 rcxion_matrix == TileClassifierLine.TT_STRAIGHT_NS
-            ), terrain.MP_BRIDGE, wm.matrix)
+            ), terrain.MP_BRIDGE, wm)
         
         self._weightmap = wm
 
@@ -590,8 +592,10 @@ class RoadLayer(TerrainLayer):
         ey = end_city.y
         
         inf = float("inf")
-        dim = self.terrain.dim                
+        terrain = self.terrain
+        dim = terrain.dim                
         distm = np.full((dim, dim), inf, dtype=np.floating)        
+        hmatrix = terrain.heightmap.matrix
         wm = self._weightmap
         m = self.matrix
         to_visit = []
@@ -607,25 +611,36 @@ class RoadLayer(TerrainLayer):
                 # Consider every edge neighbor of current position: if distance is smaller
                 # than stored in the distance matrix, update distance and add position to
                 # the priority queue of unvisited positions. A dynamic pqueue works as
-                # long as there are no negative penalties in the weight matrix.
+                # long as there are no negative penalties in the weight matrix. Elevation
+                # penalties are added to the underlying weightmap here. If a road already
+                # exists, there is a low, fixed movement cost instead to encourage re-
+                # using existing roads.
                 
-                d = curr_d + wm[nx, ny]
+                if (m[ny, nx] > 0):
+                    d = curr_d + terrain.MP_ROAD
+                else:
+                    elev_penalty = abs(int(hmatrix[cy, cx]) - int(hmatrix[ny, nx]))
+                    elev_penalty *= terrain.MP_PENALTY_ELEV
+                    d = curr_d + wm[ny, nx] + elev_penalty
                 
                 if (d < distm[ny, nx]):
                     distm[ny, nx] = d
                     heapq.heappush(to_visit, (d, nx, ny))
             
-            wm.foreach_edge_neighbor(neighbor_callback, cx, cy)
-            (d, cx, cy) = heapq.heappop(to_visit)
+            GameFieldLayer.foreach_matrix_edge_neighbor(wm, neighbor_callback, cx, cy)
+                
+            try:
+                (d, cx, cy) = heapq.heappop(to_visit)
+            except IndexError:
+                d = inf
             
             if (d == inf):
                 debug("\tno route to endpoint")
                 break
-            elif (cx == ex and cy == ey):
+            if (cx == ex and cy == ey):
+                self._traceback_road(end_city, distm)
                 debug("\troute to endpoint found, distance {}".format(distm[ey, ex]))
                 break
-        
-        self._traceback_road(end_city, distm)
         
     def _traceback_road(self, end_city, distm):
         

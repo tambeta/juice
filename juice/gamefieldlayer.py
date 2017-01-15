@@ -67,22 +67,9 @@ class GameFieldLayer:
 
     def foreach_edge_neighbor(self, cb, x, y, *extra):
 
-        """ Convenience routine to loop over all edge neigbors. Excludes invalid
-        coordinates. Callback can break by returning False, in which case the
-        method returns False. Upon completion of iterating over all neighbors,
-        returns True.
-        
-        Note: often convolution is preferable, e.g. http://stackoverflow.com/a/12613511
-        """
+        """ Object method variant of foreach_matrix_edge_neighbor. """
 
-        dim = self.matrix.shape[0]
-
-        for (cx, cy) in ((x, y-1), (x+1, y), (x, y+1), (x-1, y)):
-            if (cx >= 0 and cy >= 0 and cx < dim and cy < dim):
-                if (cb(cx, cy, *extra) == False):
-                    return False
-
-        return True
+        return self.foreach_matrix_edge_neighbor(self.matrix, cb, x, y, *extra)
 
     def label_segments(self, min_size=0):
 
@@ -116,6 +103,26 @@ class GameFieldLayer:
                     matrix[label_indices] = 0
 
         return (matrix, n_labels)
+    
+    @staticmethod
+    def foreach_matrix_edge_neighbor(matrix, cb, x, y, *extra):
+            
+        """ Static method. Convenience routine to loop over all edge neigbors.
+        Excludes invalid coordinates. Callback can break by returning False, in
+        which case the method returns False. Upon completion of iterating over
+        all neighbors, returns True.
+        
+        Note: often convolution is preferable, e.g. http://stackoverflow.com/a/12613511
+        """
+            
+        dim = matrix.shape[0]
+
+        for (cx, cy) in ((x, y-1), (x+1, y), (x, y+1), (x-1, y)):
+            if (cx >= 0 and cy >= 0 and cx < dim and cy < dim):
+                if (cb(cx, cy, *extra) == False):
+                    return False
+
+        return True    
     
     def __getitem__(self, i):
         
