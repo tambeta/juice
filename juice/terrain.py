@@ -25,29 +25,30 @@ class Terrain:
 
     Layer constants:
 
-    MOUNTAIN_THRESHOLD       - Height at which or above a point is
-                               considered to be a mountain, i.e. suitable
+    MOUNTAIN_THRESHOLD       - Height at which or above a point is 
+                               considered to be a mountain, i.e. suitable 
                                for a river source.
-    SEA_THRESHOLD            - Height at which or below a point is
+    SEA_THRESHOLD            - Height at which or below a point is 
                                considered to be suitable for sea.
-    MIN_SEA_SIZE             - Minimum size of a contiguous sea layer
+    MIN_SEA_SIZE             - Minimum size of a contiguous sea layer 
                                segment.
-    RIVER_DENSITY            - Proportion of river sources to mountain
+    RIVER_DENSITY            - Proportion of river sources to mountain 
                                areas.
-    BIOME_H_DELTA            - A point is suitable for a biome if its
-                               height is lte than
-                               MOUNTAIN_THRESHOLD-BIOME_H_DELTA or gte than
+    BIOME_H_DELTA            - A point is suitable for a biome if its 
+                               height is lte than 
+                               MOUNTAIN_THRESHOLD-BIOME_H_DELTA or gte than 
                                SEA_THRESHOLD+BIOME_H_DELTA.
-    MIN_BIOME_SIZE           - Minimum size of contiguous biome layer
+    MIN_BIOME_SIZE           - Minimum size of contiguous biome layer 
                                segment.
     CITY_DENSITY             - Proportion of cities to land areas.
-    MIN_POPSUPPORT_SIZE      - Minimum size of contiguous land are to be
+    MIN_POPSUPPORT_SIZE      - Minimum size of contiguous land are to be 
                                considered for city placement.
-    CITY_CLOSENESS_FACTOR    - The map dimension is divided by this
-                               constant to get the minimum distance between
+    CITY_CLOSENESS_FACTOR    - The map dimension is divided by this 
+                               constant to get the minimum distance between 
                                any two cities.
-    MAX_CITY_DISALLOW_RADIUS - Maximum value for the minimum distance
-                               between any two cities.
+    MAX_CITY_DISALLOW_RADIUS - Maximum value for the minimum distance 
+    MP_*                     - Movement points, or penalties for various 
+                               terrain features in road generation. 
     """
 
     MOUNTAIN_THRESHOLD = 192

@@ -80,7 +80,8 @@ class TerrainLayer(GameFieldLayer, metaclass=abc.ABCMeta):
         except Exception as e:
             self.matrix = None
             raise e
-
+    
+    @staticmethod
     def classified(fn):
 
         """ Decorator for generate methods. Applies tile classification /
@@ -110,6 +111,16 @@ class TerrainLayer(GameFieldLayer, metaclass=abc.ABCMeta):
             tlayer.classification = cx
 
         return wrapped
+        
+    @staticmethod
+    def defer_classified(fn):
+        
+        """ Sister decorator for `classified`; this variation applies
+        classification to the layer only after all layers have been
+        generated. TODO.
+        """
+        
+        pass
 
 class SeaLayer(TerrainLayer):
 

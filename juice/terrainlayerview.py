@@ -217,3 +217,7 @@ class _CityLayerView(TerrainLayerView):
                 (1, 1, 1)
             )),  
         }
+
+class _RoadLayerView(TerrainLayerView):
+    def get_tiles(self):
+        raise NotImplementedError()
