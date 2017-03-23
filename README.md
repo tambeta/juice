@@ -38,6 +38,12 @@ demo, simply run `juice.py` without arguments.
 
 ## Usage
 
+Ensure `scipy`, `numpy`, `pyglet` and `PIL`
+([Pillow](http://pillow.readthedocs.io/)) are installed and available in the
+environment before attempting to run `juice.py`. The most convenient way to
+achieve this is to use a [virtual
+environment](https://python-docs.readthedocs.io/en/latest/dev/virtualenvs.html).
+
 ```
 $ ./juice.py --help
 usage: juice.py [-h] [-r RANDOM_SEED] [-d DIMENSION] [-t] [-L LOG_LEVEL] [-m]
