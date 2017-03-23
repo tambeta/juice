@@ -30,10 +30,11 @@ a 2D terrain. The resulting map can be visualized by passing the `-m` flag to
 ## Scrolling engine
 
 This project also includes basic final rendering of the game world onto a
-scrollable pyglet / OpenGL viewport. The LPC Tile Atlas is utilized (see
-LICENSE for details), but as this is missing some graphics (rivers, roads,
+scrollable pyglet / OpenGL viewport. The [LPC Tile
+Atlas](http://lpc.opengameart.org/) is utilized (see LICENSE for details), but
+as this is missing some graphics (rivers, roads,
 cities), these features are represented by runtime-generated mock tiles. For a
-demo, simply run `juice.py` without arguments
+demo, simply run `juice.py` without arguments.
 
 ## Usage
 
